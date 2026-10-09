@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="pt">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#10264b"><meta name="description" content="Portal oficial da Associação dos Estudantes do Magistério Nº 1028 CNO, Comandante Benedito.">
+<title>Associação dos Estudantes | Magistério Nº 1028 CNO</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="#inicio" aria-label="Página inicial">
+    <div class="crest" aria-hidden="true"><span>AE</span><small>1028</small></div>
+    <div><strong>ASSOCIAÇÃO DOS ESTUDANTES</strong><small>Magistério Nº 1028 CNO · Comandante Benedito</small></div>
+  </a>
+  <button id="menuToggle" class="menu-toggle" aria-label="Abrir menu" aria-expanded="false">☰</button>
+  <nav id="mainNav">
+    <a href="#inicio">Início</a><a href="#noticias">Notícias</a><a href="#eventos">Actividades</a>
+    <a href="#membro">Ser membro</a><a href="#documentos">Documentos</a><a href="#contactos">Contactos</a>
+    <button class="nav-login" data-open-admin>Área da Direcção</button>
+  </nav>
+</header>
+
+<main>
+<section class="hero" id="inicio">
+  <div class="hero-shade"></div>
+  <div class="hero-content">
+    <p class="eyebrow">REPRESENTAR · PARTICIPAR · CONSTRUIR</p>
+    <h1>A voz dos estudantes.<br><em>O futuro da nossa escola.</em></h1>
+    <p class="hero-copy">Um espaço de informação, participação e união para a comunidade estudantil do Magistério Nº 1028 CNO, Comandante Benedito.</p>
+    <div class="hero-actions"><a class="btn btn-light" href="#noticias">Ver comunicados <span>↗</span></a><a class="btn btn-outline" href="#membro">Quero participar</a></div>
+  </div>
+  <div class="hero-stamp"><span>AE</span><strong>1028</strong><small>ESTUDANTES UNIDOS</small></div>
+</section>
+
+<section class="quick-strip" aria-label="Princípios da associação">
+  <div><span class="quick-icon">◎</span><strong>Representação</strong><small>Dar voz aos estudantes</small></div>
+  <div><span class="quick-icon">◇</span><strong>Transparência</strong><small>Informação acessível</small></div>
+  <div><span class="quick-icon">✳</span><strong>Participação</strong><small>Construir em conjunto</small></div>
+</section>
+
+<section class="section" id="noticias">
+  <div class="section-head"><div><p class="eyebrow dark">INFORMAÇÃO OFICIAL</p><h2>Notícias & comunicados</h2><p class="muted">Acompanhe avisos e informações da Associação.</p></div><span class="section-number">01 / INFORMAÇÃO</span></div>
+  <div id="newsGrid" class="cards">
+    <article class="news-card featured"><div class="news-visual visual-blue"><span>COMUNICADO</span><b>AE</b></div><div class="card-body"><p class="meta">INFORMAÇÃO INSTITUCIONAL</p><h3>Bem-vindos ao portal da Associação</h3><p>Este é o espaço digital de informação e participação dos estudantes. Os comunicados oficiais serão publicados aqui pela Direcção.</p><span class="date">Portal de apresentação</span></div></article>
+    <article class="news-card"><div class="news-visual visual-gold"><span>PARTICIPAÇÃO</span><b>✦</b></div><div class="card-body"><p class="meta">A COMUNIDADE CONTA</p><h3>Uma associação próxima dos estudantes</h3><p>Partilhe sugestões, dúvidas ou preocupações através dos canais de contacto disponíveis neste portal.</p><span class="date">Mensagem institucional</span></div></article>
+    <article class="news-card"><div class="news-visual visual-green"><span>TRANSPARÊNCIA</span><b>↗</b></div><div class="card-body"><p class="meta">DOCUMENTOS</p><h3>Informação organizada e acessível</h3><p>Actas, regulamentos e outros documentos públicos serão disponibilizados na secção de documentos.</p><span class="date">Serviço ao estudante</span></div></article>
+  </div>
+  <p class="notice"><strong>Nota:</strong> os conteúdos acima são textos iniciais de demonstração. A Direcção deverá substituí-los por informações verificadas antes da publicação oficial.</p>
+</section>
+
+<section class="events-section" id="eventos"><div class="section event-inner">
+  <div class="section-head"><div><p class="eyebrow">VIDA ACADÉMICA</p><h2>Actividades & eventos</h2><p class="muted light-muted">Encontros, iniciativas e momentos importantes da comunidade.</p></div><span class="section-number light-num">02 / ACTIVIDADES</span></div>
+  <div id="eventsGrid" class="event-grid">
+    <article class="event-card"><div class="event-date"><b>—</b><span>DATA</span></div><div><span class="tag">A ANUNCIAR</span><h3>Próximas actividades</h3><p>As datas e os detalhes dos próximos eventos serão anunciados através dos comunicados oficiais.</p></div></article>
+    <article class="event-card"><div class="event-date"><b>AE</b><span>1028</span></div><div><span class="tag">PARTICIPAÇÃO</span><h3>Faça parte das iniciativas</h3><p>Consulte os avisos da Associação e acompanhe as oportunidades de participação estudantil.</p></div></article>
+  </div>
+</div></section>
+
+<section class="section split-section" id="membro">
+  <div class="member-copy"><p class="eyebrow dark">FAÇA PARTE</p><h2>A Associação também é sua.</h2><p class="muted">Se pretendes participar activamente na vida estudantil, preenche o formulário. A inscrição só será considerada oficial depois de validada pela Direcção.</p>
+    <ul class="check-list"><li>Participação responsável</li><li>Respeito pela comunidade escolar</li><li>Colaboração e espírito de equipa</li></ul>
+    <div class="quote-mark">“</div><p class="quote">Uma comunidade estudantil mais forte começa com a participação de cada um.</p>
+  </div>
+  <form class="form-card" id="memberForm">
+    <h3>Pedido de inscrição</h3><p class="form-intro">Preencha os dados necessários. Evite enviar informações pessoais que não sejam solicitadas.</p>
+    <label>Nome completo<input name="name" autocomplete="name" required maxlength="100" placeholder="O seu nome completo"></label>
+    <div class="form-row"><label>Curso<input name="course" required maxlength="80" placeholder="Ex.: Língua Portuguesa"></label><label>Classe<input name="grade" required maxlength="30" placeholder="Ex.: 11.ª classe"></label></div>
+    <label>Contacto telefónico<input name="phone" inputmode="tel" required maxlength="30" placeholder="Número de telefone"></label>
+    <label>Por que deseja participar? <textarea name="motivation" rows="3" maxlength="600" placeholder="Escreva brevemente (opcional)"></textarea></label>
+    <label class="consent"><input type="checkbox" name="consent" required> Confirmo que os dados são correctos e aceito que a Direcção os utilize para tratar este pedido.</label>
+    <button class="btn btn-primary full" type="submit">Enviar pedido <span>→</span></button><p class="form-status" id="memberStatus" aria-live="polite"></p>
+  </form>
+</section>
+
+<section class="suggestion-band"><div><p class="eyebrow">A SUA OPINIÃO É IMPORTANTE</p><h2>Tem uma sugestão ou reclamação?</h2><p>Ajude-nos a identificar problemas e melhorar a representação estudantil.</p></div><button class="btn btn-light" id="openSuggestion">Enviar mensagem <span>→</span></button></section>
+
+<section class="section documents-section" id="documentos">
+  <div class="section-head"><div><p class="eyebrow dark">CONSULTA PÚBLICA</p><h2>Documentos & actas</h2><p class="muted">Consulte documentos oficiais disponibilizados pela Direcção.</p></div><span class="section-number">03 / DOCUMENTOS</span></div>
+  <div class="document-list" id="documentList">
+    <div class="document-row"><div class="doc-icon">PDF</div><div class="doc-info"><strong>Documentos oficiais</strong><small>Os ficheiros serão publicados aqui após validação.</small></div><span class="doc-state">A publicar</span></div>
+    <div class="document-row"><div class="doc-icon">ACT</div><div class="doc-info"><strong>Actas das reuniões</strong><small>As actas públicas serão disponibilizadas nesta secção.</small></div><span class="doc-state">A publicar</span></div>
+    <div class="document-row"><div class="doc-icon">REG</div><div class="doc-info"><strong>Regulamentos e orientações</strong><small>Consulte sempre a versão oficial aprovada.</small></div><span class="doc-state">A publicar</span></div>
+  </div>
+</section>
+
+<section class="contact-section" id="contactos"><div class="section contact-inner">
+  <div><p class="eyebrow">ESTAMOS DISPONÍVEIS</p><h2>Vamos manter<br>o contacto.</h2><p class="muted light-muted">Para informações, propostas ou assuntos relacionados com a Associação, utilize os canais oficiais.</p></div>
+  <div class="contact-card"><div class="contact-item"><span>01</span><div><small>INSTITUIÇÃO</small><strong>Magistério Nº 1028 CNO</strong><p>Comandante Benedito</p></div></div><div class="contact-item"><span>02</span><div><small>WHATSAPP</small><strong id="whatsLabel">Contacto por configurar</strong><p>O número oficial será inserido pela Direcção.</p></div></div><div class="contact-item"><span>03</span><div><small>CORREIO ELECTRÓNICO</small><strong id="emailLabel">E-mail por configurar</strong><p>Será anunciado quando existir um endereço oficial.</p></div></div><button class="btn btn-outline" id="contactBtn">Configurar contactos <span>↗</span></button></div>
+</div></section>
+</main>
+
+<footer><a class="footer-brand" href="#inicio">AE <b>1028</b></a><p>Associação dos Estudantes do Magistério Nº 1028 CNO, Comandante Benedito.</p><small>Portal independente de informação e participação estudantil · <span id="year"></span></small></footer>
+
+<div class="modal" id="suggestionModal" aria-hidden="true"><div class="modal-backdrop" data-close-suggestion></div><div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="suggestionTitle"><button class="modal-close" data-close-suggestion aria-label="Fechar">×</button><p class="eyebrow dark">PARTICIPAÇÃO ESTUDANTIL</p><h2 id="suggestionTitle">Envie a sua mensagem</h2><form id="suggestionForm"><label>Tipo de mensagem<select name="type" required><option value="Sugestão">Sugestão</option><option value="Reclamação">Reclamação</option><option value="Dúvida">Dúvida</option></select></label><label>Nome (opcional)<input name="name" maxlength="100" placeholder="Pode deixar em branco"></label><label>Mensagem<textarea name="message" required minlength="5" maxlength="1500" rows="5" placeholder="Explique a situação com respeito e clareza"></textarea></label><button class="btn btn-primary full" type="submit">Enviar mensagem</button><p class="form-status" id="suggestionStatus" aria-live="polite"></p></form></div></div>
+
+<div class="modal" id="adminModal" aria-hidden="true"><div class="modal-backdrop" data-close-admin></div><div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="adminTitle"><button class="modal-close" data-close-admin aria-label="Fechar">×</button><p class="eyebrow dark">ACESSO RESTRITO</p><h2 id="adminTitle">Área da Direcção</h2><p class="muted">A autenticação segura será activada após a configuração da base de dados. Esta versão de demonstração não aceita nem guarda palavras-passe.</p><div class="security-note"><strong>Protecção em preparação</strong><p>Não introduza aqui a palavra-passe de nenhum serviço. Para activar a área reservada, siga o guia de configuração incluído no pacote.</p></div><a class="btn btn-primary full" href="CONFIGURACAO.md">Abrir guia de configuração</a></div></div>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<script src="app.js"></script>
+</body></html>
