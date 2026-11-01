@@ -1,0 +1,67 @@
+{
+  "name": "Associação dos Estudantes – Magistério Nº 1028 CNO",
+  "short_name": "Associação",
+  "description": "Portal oficial da Associação dos Estudantes do Magistério Nº 1028 CNO, Comandante Benedito.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#10264b",
+  "theme_color": "#10264b",
+  "lang": "pt",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "id": "./",
+  "categories": [
+    "education"
+  ],
+  "shortcuts": [
+    {
+      "name": "Biblioteca",
+      "url": "./#biblioteca",
+      "icons": [
+        {
+          "src": "icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Ser membro",
+      "url": "./#membro",
+      "icons": [
+        {
+          "src": "icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Contactos",
+      "url": "./#contactos",
+      "icons": [
+        {
+          "src": "icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ]
+}

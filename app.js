@@ -5,7 +5,7 @@ const CFG = window.AE_CONFIG || {};
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const safeUrl = u => /^https?:\/\//i.test(u) ? u : "#";
 const fmt = d => d ? new Date(d).toLocaleDateString("pt-PT",{day:"2-digit",month:"short",year:"numeric"}) : "";
-const toast = m => { const el=$("#toast"); el.textContent=m; el.classList.add("show"); clearTimeout(window.__t); window.__t=setTimeout(()=>el.classList.remove("show"),3500); };
+const toast = (m,ms=3500) => { const el=$("#toast"); el.textContent=m; el.classList.add("show"); clearTimeout(window.__t); window.__t=setTimeout(()=>el.classList.remove("show"),ms); };
 const sb = (CFG.SUPABASE_URL && CFG.SUPABASE_ANON_KEY && window.supabase) ? window.supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_ANON_KEY) : null;
 
 $("#year").textContent = new Date().getFullYear();
@@ -53,8 +53,29 @@ $("#memberForm").addEventListener("submit",e=>{
 });
 $("#suggestionForm").addEventListener("submit",e=>{
   e.preventDefault(); const f=e.currentTarget, d=Object.fromEntries(new FormData(f));
-  submitPublic("suggestions",{kind:d.type,sender_name:(d.name||"").trim(),message:d.message.trim()},f,$("#suggestionStatus"),"Mensagem enviada à Direcção. Obrigado!");
+  submitPublic("suggestions",{kind:d.type,sender_name:(d.name||"").trim(),message:d.message.trim(),...((d.contact||"").trim()?{contact:d.contact.trim()}:{})},f,$("#suggestionStatus"),"Mensagem enviada à Direcção. Obrigado!");
 });
+
+/* Quadros de Honra e Mérito, Perguntas frequentes */
+function honorCard(r){
+  const ini=r.full_name.trim().split(/\s+/).map(w=>w[0]).slice(0,2).join("").toUpperCase();
+  const avg=(r.average!==null&&r.average!==undefined&&r.average!=="")?`Média final: ${String(r.average).replace(".",",")}`:"";
+  return `<article class="honor-card ${esc(r.board)}">${r.photo_url?`<img src="${esc(safeUrl(r.photo_url))}" alt="${esc(r.full_name)}" loading="lazy">`:`<div class="team-ph" aria-hidden="true">${esc(ini)}</div>`}<div class="honor-body"><span class="badge-hm">${r.board==="honra"?"Quadro de Honra":"Quadro de Mérito"}</span><h3>${esc(r.full_name)}</h3><p class="role">${esc([r.grade,r.school_year].filter(Boolean).join(" · "))}</p>${avg?`<p class="avg">${avg}</p>`:""}${r.note?`<p class="bio">${esc(r.note)}</p>`:""}</div></article>`;
+}
+function renderHonor(rows){
+  for(const b of ["honra","merito"]){
+    const list=rows.filter(r=>r.board===b);
+    $("#"+b).hidden=!list.length;
+    if(list.length) $("#"+b+"Grid").innerHTML=list.map(honorCard).join("");
+  }
+  const first=!$("#honra").hidden?"#honra":(!$("#merito").hidden?"#merito":null);
+  const n=$("#navQuadros"); if(first){n.setAttribute("href",first);n.hidden=false;} else n.hidden=true;
+}
+function renderFaq(rows){
+  $("#duvidas").hidden=!rows.length; $("#navDuvidas").hidden=!rows.length;
+  if(rows.length) $("#faqList").innerHTML=rows.map(r=>`<details class="faq-item"><summary>${esc(r.question)}</summary><p>${esc(r.answer)}</p></details>`).join("");
+}
+$$("[data-ask]").forEach(b=>b.addEventListener("click",()=>openModal("#suggestionModal")));
 
 /* Biblioteca */
 const LIB_CATS=["Livros","Manuais escolares","Fichas e exercícios","Planos de aula","Provas e exames","Apontamentos","Legislação e regulamentos","Modelos e formulários","Ligações úteis","Outros"];
@@ -81,11 +102,14 @@ async function loadPublic(){
     sb.from("announcements").select("*").eq("published",true).order("published_at",{ascending:false,nullsFirst:false}).limit(9),
     sb.from("events").select("*").eq("published",true).order("event_date",{ascending:true,nullsFirst:false}).limit(8),
     sb.from("documents").select("*").eq("published",true).order("created_at",{ascending:false}).limit(20)]);
-  const [g,m,l]=await Promise.all([
+  const [g,m,l,h,f]=await Promise.all([
     sb.from("gallery_images").select("*").eq("published",true).order("created_at",{ascending:false}).limit(200),
     sb.from("executive_members").select("*").eq("published",true).order("sort_order",{ascending:true}).order("created_at",{ascending:true}),
-    sb.from("library_resources").select("*").eq("published",true).order("created_at",{ascending:false}).limit(1000)]);
+    sb.from("library_resources").select("*").eq("published",true).order("created_at",{ascending:false}).limit(1000),
+    sb.from("honor_roll").select("*").eq("published",true).eq("consent",true).order("sort_order",{ascending:true}).order("created_at",{ascending:true}),
+    sb.from("faq_items").select("*").eq("published",true).order("sort_order",{ascending:true}).order("created_at",{ascending:true})]);
   LIB=l.data||[]; renderLib();
+  renderHonor(h.data||[]); renderFaq(f.data||[]);
   if(m.data?.length){
     $("#teamGrid").innerHTML=m.data.map(r=>`<article class="team-card">${r.photo_url?`<img src="${esc(safeUrl(r.photo_url))}" alt="${esc(r.full_name)}" loading="lazy">`:`<div class="team-ph" aria-hidden="true">${esc(r.full_name.trim().split(/\s+/).map(w=>w[0]).slice(0,2).join("").toUpperCase())}</div>`}<h3>${esc(r.full_name)}</h3><p class="role">${esc(r.role)}</p>${r.bio?`<p class="bio">${esc(r.bio)}</p>`:""}</article>`).join("");
   }
@@ -108,11 +132,18 @@ async function loadPublic(){
 loadPublic();
 
 /* Área da Direcção */
+function contactLink(c){
+  c=(c||"").trim(); if(!c) return `<small class="dim">Sem contacto para resposta</small>`;
+  if(c.includes("@")) return `<a href="mailto:${esc(c)}">Responder por e-mail: ${esc(c)}</a>`;
+  let d=c.replace(/\D/g,""); if(d.length===9) d="244"+d;
+  if(d.length>=11) return `<a href="https://wa.me/${d}" target="_blank" rel="noopener">Responder no WhatsApp: ${esc(c)}</a>`;
+  return `<small>Contacto: ${esc(c)}</small>`;
+}
 const TABS={
   member_requests:{label:"Inscrições",status:["pendente","aprovado","recusado"],
-    line:r=>`<b>${esc(r.full_name)}</b> · ${esc(r.course)}, ${esc(r.grade)}<br>${esc(r.phone)}${r.motivation?`<br><small>${esc(r.motivation)}</small>`:""}`},
+    line:r=>`<b>${esc(r.full_name)}</b> · ${esc(r.course)}, ${esc(r.grade)}<br>${contactLink(r.phone)}${r.email?"<br>"+contactLink(r.email):""}${r.motivation?`<br><small>${esc(r.motivation)}</small>`:""}`},
   suggestions:{label:"Mensagens",status:["recebida","em análise","respondida","arquivada"],
-    line:r=>`<b>${esc(r.kind)}</b>${r.sender_name?" · "+esc(r.sender_name):""}<br>${esc(r.message)}`},
+    line:r=>`<b>${esc(r.kind)}</b>${r.sender_name?" · "+esc(r.sender_name):""}<br>${esc(r.message)}<br>${contactLink(r.contact)}`},
   announcements:{label:"Comunicados",publish:true,
     form:[["title","Título"],["summary","Texto do comunicado","textarea"]],line:r=>`<b>${esc(r.title)}</b><br><small>${esc(r.summary)}</small>`},
   events:{label:"Actividades",publish:true,
@@ -127,6 +158,12 @@ const TABS={
   library_resources:{label:"Biblioteca",publish:true,
     form:[["category","Categoria","select",LIB_CATS],["title","Título (opcional se enviar ficheiros: usa-se o nome de cada ficheiro)"],["author","Autor (opcional)"],["subject","Disciplina (opcional)"],["grade","Classe (opcional)"],["description","Descrição (opcional)","textarea"],["file","Ficheiros (pode escolher vários)","file"],["file_url","…ou link (https://…) (opcional)","url"]],
     line:r=>`<b>${esc(r.title)}</b><br><small>${esc([r.category,r.subject,r.grade,r.author].filter(Boolean).join(" · "))}</small>`},
+  honor_roll:{label:"Quadros",publish:true,
+    form:[["board","Quadro","select",["Quadro de Honra","Quadro de Mérito"]],["full_name","Nome do aluno"],["grade","Classe e curso (opcional)"],["school_year","Ano lectivo (opcional), ex.: 2025/2026"],["average","Média final (opcional, de 0 a 20)","number"],["note","Motivo ou destaque (opcional)","textarea"],["sort_order","Ordem de apresentação (1, 2, 3…)","number"],["consent","Autorização do aluno ou encarregado para publicar","select",["Sim, há autorização","Ainda não"]],["file","Fotografia (opcional, só com autorização)","file"]],
+    line:r=>`${r.photo_url?`<img class="thumb" src="${esc(safeUrl(r.photo_url))}" alt="">`:""}<b>${esc(r.full_name)}</b> · ${r.board==="honra"?"Honra":"Mérito"}${r.average!==null&&r.average!==undefined?" · média "+esc(r.average):""}<br><small>${esc([r.grade,r.school_year].filter(Boolean).join(" · "))}${r.consent?"":" · SEM AUTORIZAÇÃO: não aparece no site"}</small>`},
+  faq_items:{label:"Dúvidas",publish:true,
+    form:[["question","Pergunta"],["answer","Resposta","textarea"],["sort_order","Ordem (opcional)","number"]],
+    line:r=>`<b>${esc(r.question)}</b><br><small>${esc(r.answer)}</small>`},
   documents:{label:"Documentos",publish:true,
     form:[["title","Título"],["description","Descrição"],["file","Ficheiro (PDF, até 10 MB)","file"],["public_url","…ou link público (https://…)","url"]],
     line:r=>`<b>${esc(r.title)}</b><br><small>${esc(r.public_url)}</small>`}
@@ -159,7 +196,7 @@ async function loadTab(name){
   $$("#adminTabs .tab-btn").forEach(b=>b.classList.toggle("active",b.dataset.tab===name));
   const {data,error}=await sb.from(name).select("*").order("created_at",{ascending:false}).limit(300);
   let html="";
-  if(t.form) html+=`<form class="admin-form" data-add="${name}">${t.form.map(([k,l,ty,opts])=>ty==="select"?`<label>${l}<select name="${k}">${opts.map(o=>`<option>${esc(o)}</option>`).join("")}</select></label>`:ty==="textarea"?`<label>${l}<textarea name="${k}" rows="3" ${k==="bio"||/opcional/.test(l)?"":"required"}></textarea></label>`:`<label>${l}<input name="${k}" type="${ty||"text"}" ${(k==="title"&&name!=="library_resources")||k==="full_name"||k==="role"?"required":""}${ty==="file"&&(name==="gallery_images"||name==="library_resources")?" multiple":""}${ty==="file"?' accept="'+(name==="documents"||name==="library_resources"?".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx":"image/*")+'"':""}></label>`).join("")}<button class="btn btn-primary" type="submit">Adicionar (fica oculto até publicar)</button></form>`;
+  if(t.form) html+=`<form class="admin-form" data-add="${name}">${t.form.map(([k,l,ty,opts])=>ty==="select"?`<label>${l}<select name="${k}">${opts.map(o=>`<option>${esc(o)}</option>`).join("")}</select></label>`:ty==="textarea"?`<label>${l}<textarea name="${k}" rows="3" ${k==="bio"||/opcional/.test(l)?"":"required"}></textarea></label>`:`<label>${l}<input name="${k}" type="${ty||"text"}"${ty==="number"?' step="any"':""} ${(k==="title"&&name!=="library_resources")||k==="full_name"||k==="role"||k==="question"?"required":""}${ty==="file"&&(name==="gallery_images"||name==="library_resources")?" multiple":""}${ty==="file"?' accept="'+(name==="documents"||name==="library_resources"?".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx":"image/*")+'"':""}></label>`).join("")}<button class="btn btn-primary" type="submit">Adicionar (fica oculto até publicar)</button></form>`;
   if(error) html+=`<p class="form-status">Erro ao carregar dados.</p>`;
   else if(!data.length) html+=`<p class="muted">Sem registos.</p>`;
   else html+=data.map(r=>`<div class="admin-row"><div class="admin-info">${t.line(r)}<br><small class="dim">${esc(fmt(r.created_at))}</small></div><div class="admin-actions">${
@@ -197,6 +234,7 @@ $("#adminBody").addEventListener("submit",async e=>{
   const tb=f.dataset.add, btn=$("button[type=submit]",f), row={}, files=[];
   for(const [k,v] of new FormData(f)){ if(v instanceof File){ if(v.size) files.push(v); } else if(v!=="") row[k]=v; }
   if(row.event_date)row.event_date=new Date(row.event_date).toISOString();
+  if(tb==="honor_roll"){row.board=(row.board||"").includes("Honra")?"honra":"merito";row.consent=(row.consent||"").startsWith("Sim");}
   btn.disabled=true;
   if(tb==="gallery_images"){
     if(!files.length){toast("Escolha pelo menos uma imagem.");btn.disabled=false;return;}
@@ -239,9 +277,9 @@ $("#adminBody").addEventListener("submit",async e=>{
     const file=files[0];
     if(file.size>10*1024*1024){toast("Ficheiro acima de 10 MB.");btn.disabled=false;return;}
     const bucket=tb==="documents"?"documents":"event-images";
-    const url=await uploadFile(bucket,tb==="documents"?file:await shrink(file),tb==="executive_members"?"members/":"");
+    const url=await uploadFile(bucket,tb==="documents"?file:await shrink(file),tb==="executive_members"?"members/":tb==="honor_roll"?"honor/":"");
     if(!url){toast("Erro no envio do ficheiro.");btn.disabled=false;return;}
-    if(tb==="documents")row.public_url=url; else if(tb==="executive_members")row.photo_url=url; else row.image_url=url;
+    if(tb==="documents")row.public_url=url; else if(tb==="executive_members"||tb==="honor_roll")row.photo_url=url; else row.image_url=url;
   }
   if(tb==="documents"&&!row.public_url){toast("Escolha um ficheiro ou indique um link.");btn.disabled=false;return;}
   const {error}=await sb.from(tb).insert(row);
@@ -257,3 +295,13 @@ $("#galleryGrid").addEventListener("click",e=>{const b=e.target.closest(".g-item
 const closeLb=()=>{lb.hidden=true;document.body.style.overflow="";};
 lb.addEventListener("click",closeLb);
 document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!lb.hidden)closeLb();});
+
+/* App instalável (PWA) */
+let installEv=null;
+window.addEventListener("beforeinstallprompt",e=>{e.preventDefault();installEv=e;$("#installBtn").hidden=false;});
+const isIOS=/iphone|ipad|ipod/i.test(navigator.userAgent)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
+const isStandalone=window.matchMedia("(display-mode: standalone)").matches||navigator.standalone;
+if(isIOS&&!isStandalone){$("#installBtn").hidden=false;}
+$("#installBtn").addEventListener("click",async()=>{if(isIOS&&!installEv){toast("Toque em Partilhar (quadrado com seta) e depois em «Adicionar ao ecrã principal».",9000);return;}if(!installEv)return;installEv.prompt();await installEv.userChoice;installEv=null;$("#installBtn").hidden=true;});
+window.addEventListener("appinstalled",()=>{$("#installBtn").hidden=true;});
+if("serviceWorker" in navigator) window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));

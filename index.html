@@ -5,17 +5,29 @@
 <meta name="theme-color" content="#10264b"><meta name="description" content="Portal oficial da Associação dos Estudantes do Magistério Nº 1028 CNO, Comandante Benedito.">
 <title>Associação dos Estudantes | Magistério Nº 1028 CNO</title>
 <link rel="stylesheet" href="styles.css">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Associação">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="pt_PT">
+<meta property="og:title" content="Associação dos Estudantes | Magistério Nº 1028 CNO">
+<meta property="og:description" content="Notícias, actividades, biblioteca, quadros de honra e contactos da Associação dos Estudantes do Magistério Nº 1028 CNO, Comandante Benedito.">
+<meta name="theme-color" content="#10264b">
+<link rel="apple-touch-icon" href="icon-180.png">
 </head>
 <body>
 <header class="topbar">
   <a class="brand" href="#inicio" aria-label="Página inicial">
-    <div class="crest" aria-hidden="true"><span>AE</span><small>1028</small></div>
+    <img class="brand-logo" src="logo.png" alt="Logótipo da Associação dos Estudantes do Magistério Nº 1028 CNO">
     <div><strong>ASSOCIAÇÃO DOS ESTUDANTES</strong><small>Magistério Nº 1028 CNO · Comandante Benedito</small></div>
   </a>
   <button id="menuToggle" class="menu-toggle" aria-label="Abrir menu" aria-expanded="false">☰</button>
   <nav id="mainNav">
-    <a href="#inicio">Início</a><a href="#noticias">Notícias</a><a href="#eventos">Actividades</a><a href="#galeria">Galeria</a><a href="#executivo">Executivo</a>
-    <a href="#membro">Ser membro</a><a href="#biblioteca">Biblioteca</a><a href="#documentos">Documentos</a><a href="#contactos">Contactos</a>
+    <a href="#inicio">Início</a><a href="#noticias">Notícias</a><a href="#eventos">Actividades</a><a href="#galeria">Galeria</a><a href="#executivo">Executivo</a><a id="navQuadros" href="#honra" hidden>Quadros</a>
+    <a href="#membro">Ser membro</a><a href="#biblioteca">Biblioteca</a><a href="#documentos">Documentos</a><a id="navDuvidas" href="#duvidas" hidden>Dúvidas</a><a href="#contactos">Contactos</a>
     <button class="nav-login" data-open-admin>Área da Direcção</button>
   </nav>
 </header>
@@ -60,6 +72,10 @@
 
 <section class="section" id="executivo"><div class="section-head"><div><p class="eyebrow dark">LIDERANÇA</p><h2>Membros executivos</h2><p class="muted">Conheça quem representa os estudantes.</p></div></div><div id="teamGrid" class="team-grid"><p class="muted">Os membros executivos serão apresentados aqui.</p></div></section>
 
+<section class="section" id="honra" hidden><div class="section-head"><div><p class="eyebrow dark">EXCELÊNCIA</p><h2>Quadro de Honra</h2><p class="muted">Alunos que terminaram com as melhores notas.</p></div></div><div id="honraGrid" class="team-grid"></div></section>
+
+<section class="section" id="merito" hidden><div class="section-head"><div><p class="eyebrow dark">RECONHECIMENTO</p><h2>Quadro de Mérito</h2><p class="muted">Alunos que se distinguiram pelo esforço, comportamento e dedicação.</p></div></div><div id="meritoGrid" class="team-grid"></div></section>
+
 <section class="section split-section" id="membro">
   <div class="member-copy"><p class="eyebrow dark">FAÇA PARTE</p><h2>A Associação também é sua.</h2><p class="muted">Se pretendes participar activamente na vida estudantil, preenche o formulário. A inscrição só será considerada oficial depois de validada pela Direcção.</p>
     <ul class="check-list"><li>Participação responsável</li><li>Respeito pela comunidade escolar</li><li>Colaboração e espírito de equipa</li></ul>
@@ -93,15 +109,17 @@
   </div>
 </section>
 
+<section class="section" id="duvidas" hidden><div class="section-head"><div><p class="eyebrow dark">AJUDA</p><h2>Perguntas frequentes</h2><p class="muted">Respostas às dúvidas mais comuns dos estudantes.</p></div></div><div id="faqList" class="faq-list"></div><p class="muted">Não encontrou a resposta? <button type="button" class="link-btn" data-ask>Envie a sua dúvida à Direcção</button></p></section>
+
 <section class="contact-section" id="contactos"><div class="section contact-inner">
   <div><p class="eyebrow">ESTAMOS DISPONÍVEIS</p><h2>Vamos manter<br>o contacto.</h2><p class="muted light-muted">Para informações, propostas ou assuntos relacionados com a Associação, utilize os canais oficiais.</p></div>
   <div class="contact-card"><div class="contact-item"><span>01</span><div><small>INSTITUIÇÃO</small><strong>Magistério Nº 1028 CNO</strong><p>Comandante Benedito</p></div></div><div class="contact-item"><span>02</span><div><small>WHATSAPP</small><strong id="whatsLabel">Contacto por configurar</strong><p>O número oficial será inserido pela Direcção.</p></div></div><div class="contact-item"><span>03</span><div><small>TELEFONES</small><strong id="phoneLabel">Por configurar</strong><p>Contactos telefónicos oficiais da Associação.</p></div></div><div class="contact-item"><span>04</span><div><small>CORREIO ELECTRÓNICO</small><strong id="emailLabel">E-mail por configurar</strong><p>Será anunciado quando existir um endereço oficial.</p></div></div><button class="btn btn-outline" id="contactBtn">Configurar contactos <span>↗</span></button></div>
 </div></section>
 </main>
 
-<footer><a class="footer-brand" href="#inicio">AE <b>1028</b></a><p>Associação dos Estudantes do Magistério Nº 1028 CNO, Comandante Benedito.</p><small>Portal independente de informação e participação estudantil · <span id="year"></span></small><button type="button" class="link-btn light" data-open-privacy>Privacidade e dados pessoais</button></footer>
+<footer><a class="footer-brand" href="#inicio">AE <b>1028</b></a><p>Associação dos Estudantes do Magistério Nº 1028 CNO, Comandante Benedito.</p><small>Portal independente de informação e participação estudantil · <span id="year"></span></small><button type="button" class="link-btn light" id="installBtn" hidden>Instalar a app no telemóvel</button><button type="button" class="link-btn light" data-open-privacy>Privacidade e dados pessoais</button></footer>
 
-<div class="modal" id="suggestionModal" aria-hidden="true"><div class="modal-backdrop" data-close-suggestion></div><div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="suggestionTitle"><button class="modal-close" data-close-suggestion aria-label="Fechar">×</button><p class="eyebrow dark">PARTICIPAÇÃO ESTUDANTIL</p><h2 id="suggestionTitle">Envie a sua mensagem</h2><form id="suggestionForm"><input class="hp" name="website" tabindex="-1" autocomplete="off" aria-hidden="true"><label>Tipo de mensagem<select name="type" required><option value="Sugestão">Sugestão</option><option value="Reclamação">Reclamação</option><option value="Dúvida">Dúvida</option></select></label><label>Nome (opcional)<input name="name" maxlength="100" placeholder="Pode deixar em branco"></label><label>Mensagem<textarea name="message" required minlength="5" maxlength="1500" rows="5" placeholder="Explique a situação com respeito e clareza"></textarea></label><button class="btn btn-primary full" type="submit">Enviar mensagem</button><p class="form-status" id="suggestionStatus" aria-live="polite"></p></form></div></div>
+<div class="modal" id="suggestionModal" aria-hidden="true"><div class="modal-backdrop" data-close-suggestion></div><div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="suggestionTitle"><button class="modal-close" data-close-suggestion aria-label="Fechar">×</button><p class="eyebrow dark">PARTICIPAÇÃO ESTUDANTIL</p><h2 id="suggestionTitle">Envie a sua mensagem</h2><form id="suggestionForm"><input class="hp" name="website" tabindex="-1" autocomplete="off" aria-hidden="true"><label>Tipo de mensagem<select name="type" required><option value="Sugestão">Sugestão</option><option value="Reclamação">Reclamação</option><option value="Dúvida">Dúvida</option></select></label><label>Nome (opcional)<input name="name" maxlength="100" placeholder="Pode deixar em branco"></label><label>Telefone ou e-mail para resposta (opcional)<input name="contact" maxlength="120" autocomplete="off" placeholder="Sem contacto, não conseguimos responder-lhe"></label><label>Mensagem<textarea name="message" required minlength="5" maxlength="1500" rows="5" placeholder="Explique a situação com respeito e clareza"></textarea></label><button class="btn btn-primary full" type="submit">Enviar mensagem</button><p class="form-status" id="suggestionStatus" aria-live="polite"></p></form></div></div>
 
 <div class="modal" id="adminModal" aria-hidden="true"><div class="modal-backdrop" data-close-admin></div><div class="modal-panel admin-wide" role="dialog" aria-modal="true" aria-labelledby="adminTitle"><button class="modal-close" data-close-admin aria-label="Fechar">×</button><p class="eyebrow dark">ACESSO RESTRITO</p><h2 id="adminTitle">Área da Direcção</h2>
 <form id="adminLogin"><label>E-mail<input type="email" name="email" autocomplete="username" required></label><label>Palavra-passe<input type="password" name="password" autocomplete="current-password" required></label><button class="btn btn-primary full" type="submit">Entrar</button><p class="form-status" id="adminStatus" aria-live="polite"></p></form>
