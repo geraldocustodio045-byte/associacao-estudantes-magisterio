@@ -48,3 +48,9 @@ a.document-row{color:inherit;text-decoration:none}
 
 /* Menu recolhido também em ecrãs médios (há mais secções no menu) */
 @media(min-width:761px) and (max-width:1240px){.menu-toggle{display:block}nav{display:none;position:absolute;left:0;right:0;top:84px;background:white;padding:18px 6%;box-shadow:0 15px 25px #10264b18;align-items:stretch;flex-direction:column;gap:0}nav.open{display:flex}nav a,.nav-login{text-align:left;padding:13px 4px;border-bottom:1px solid #eef0f3}.nav-login{margin-top:8px;padding:12px}}
+
+/* Biblioteca */
+.lib-tools{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.lib-tools input,.lib-tools select{padding:12px 13px;border:1px solid #dce1e8;border-radius:8px;font:400 .85rem "DM Sans";background:#fff;color:var(--ink)}
+.lib-tools input{flex:1 1 240px}
+#libMore{margin-top:16px}

@@ -15,7 +15,7 @@
   <button id="menuToggle" class="menu-toggle" aria-label="Abrir menu" aria-expanded="false">☰</button>
   <nav id="mainNav">
     <a href="#inicio">Início</a><a href="#noticias">Notícias</a><a href="#eventos">Actividades</a><a href="#galeria">Galeria</a><a href="#executivo">Executivo</a>
-    <a href="#membro">Ser membro</a><a href="#documentos">Documentos</a><a href="#contactos">Contactos</a>
+    <a href="#membro">Ser membro</a><a href="#biblioteca">Biblioteca</a><a href="#documentos">Documentos</a><a href="#contactos">Contactos</a>
     <button class="nav-login" data-open-admin>Área da Direcção</button>
   </nav>
 </header>
@@ -77,6 +77,12 @@
 </section>
 
 <section class="suggestion-band"><div><p class="eyebrow">A SUA OPINIÃO É IMPORTANTE</p><h2>Tem uma sugestão ou reclamação?</h2><p>Ajude-nos a identificar problemas e melhorar a representação estudantil.</p></div><button class="btn btn-light" id="openSuggestion">Enviar mensagem <span>→</span></button></section>
+
+<section class="section" id="biblioteca"><div class="section-head"><div><p class="eyebrow dark">APRENDER</p><h2>Biblioteca e materiais didáticos</h2><p class="muted">Livros, manuais, fichas, provas e outros recursos para estudar.</p></div></div>
+<div class="lib-tools"><input id="libSearch" type="search" placeholder="Pesquisar por título, autor ou disciplina" aria-label="Pesquisar recursos"><select id="libCat" aria-label="Categoria"></select></div>
+<p class="muted" id="libCount"></p>
+<div class="document-list" id="libList"><p class="muted">Os livros e materiais serão publicados aqui.</p></div>
+<button class="btn btn-primary" id="libMore" type="button" hidden>Mostrar mais</button></section>
 
 <section class="section documents-section" id="documentos">
   <div class="section-head"><div><p class="eyebrow dark">CONSULTA PÚBLICA</p><h2>Documentos & actas</h2><p class="muted">Consulte documentos oficiais disponibilizados pela Direcção.</p></div><span class="section-number">03 / DOCUMENTOS</span></div>

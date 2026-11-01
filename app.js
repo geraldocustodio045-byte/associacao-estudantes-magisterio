@@ -56,6 +56,24 @@ $("#suggestionForm").addEventListener("submit",e=>{
   submitPublic("suggestions",{kind:d.type,sender_name:(d.name||"").trim(),message:d.message.trim()},f,$("#suggestionStatus"),"Mensagem enviada à Direcção. Obrigado!");
 });
 
+/* Biblioteca */
+const LIB_CATS=["Livros","Manuais escolares","Fichas e exercícios","Planos de aula","Provas e exames","Apontamentos","Legislação e regulamentos","Modelos e formulários","Ligações úteis","Outros"];
+const LIB_ICON={"Livros":"LIV","Manuais escolares":"MAN","Fichas e exercícios":"FIC","Planos de aula":"PLA","Provas e exames":"PRO","Apontamentos":"APO","Legislação e regulamentos":"LEI","Modelos e formulários":"MOD","Ligações úteis":"LNK","Outros":"OUT"};
+let LIB=[],libShown=12;
+$("#libCat").innerHTML=["Todas",...LIB_CATS].map(c=>`<option>${esc(c)}</option>`).join("");
+const norm=s=>String(s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+function renderLib(){
+  if(!LIB.length) return;
+  const q=norm($("#libSearch").value), c=$("#libCat").value;
+  const list=LIB.filter(r=>(c==="Todas"||r.category===c)&&(!q||norm([r.title,r.author,r.subject,r.grade,r.description].join(" ")).includes(q)));
+  $("#libCount").textContent=`${list.length} de ${LIB.length} recursos`;
+  $("#libList").innerHTML=list.length?list.slice(0,libShown).map(r=>`<a class="document-row" href="${esc(safeUrl(r.file_url))}" target="_blank" rel="noopener"><div class="doc-icon">${LIB_ICON[r.category]||"DOC"}</div><div class="doc-info"><strong>${esc(r.title)}</strong><small>${esc([r.category,r.subject,r.grade,r.author].filter(Boolean).join(" · "))}</small></div><span class="doc-state">Abrir</span></a>`).join(""):`<p class="muted">Nenhum recurso encontrado.</p>`;
+  $("#libMore").hidden=list.length<=libShown;
+}
+$("#libSearch").addEventListener("input",()=>{libShown=12;renderLib();});
+$("#libCat").addEventListener("change",()=>{libShown=12;renderLib();});
+$("#libMore").addEventListener("click",()=>{libShown+=24;renderLib();});
+
 /* Conteúdo público vindo da base de dados */
 async function loadPublic(){
   if(!sb) return;
@@ -63,9 +81,11 @@ async function loadPublic(){
     sb.from("announcements").select("*").eq("published",true).order("published_at",{ascending:false,nullsFirst:false}).limit(9),
     sb.from("events").select("*").eq("published",true).order("event_date",{ascending:true,nullsFirst:false}).limit(8),
     sb.from("documents").select("*").eq("published",true).order("created_at",{ascending:false}).limit(20)]);
-  const [g,m]=await Promise.all([
+  const [g,m,l]=await Promise.all([
     sb.from("gallery_images").select("*").eq("published",true).order("created_at",{ascending:false}).limit(200),
-    sb.from("executive_members").select("*").eq("published",true).order("sort_order",{ascending:true}).order("created_at",{ascending:true})]);
+    sb.from("executive_members").select("*").eq("published",true).order("sort_order",{ascending:true}).order("created_at",{ascending:true}),
+    sb.from("library_resources").select("*").eq("published",true).order("created_at",{ascending:false}).limit(1000)]);
+  LIB=l.data||[]; renderLib();
   if(m.data?.length){
     $("#teamGrid").innerHTML=m.data.map(r=>`<article class="team-card">${r.photo_url?`<img src="${esc(safeUrl(r.photo_url))}" alt="${esc(r.full_name)}" loading="lazy">`:`<div class="team-ph" aria-hidden="true">${esc(r.full_name.trim().split(/\s+/).map(w=>w[0]).slice(0,2).join("").toUpperCase())}</div>`}<h3>${esc(r.full_name)}</h3><p class="role">${esc(r.role)}</p>${r.bio?`<p class="bio">${esc(r.bio)}</p>`:""}</article>`).join("");
   }
@@ -104,6 +124,9 @@ const TABS={
   executive_members:{label:"Executivo",publish:true,
     form:[["full_name","Nome completo"],["role","Cargo (ex.: Presidente)"],["bio","Biografia","textarea"],["sort_order","Ordem de apresentação (1, 2, 3, 4)","number"],["file","Fotografia (opcional)","file"]],
     line:r=>`${r.photo_url?`<img class="thumb" src="${esc(safeUrl(r.photo_url))}" alt="">`:""}<b>${esc(r.full_name)}</b> · ${esc(r.role)} <small>(ordem ${esc(r.sort_order)})</small><br><small>${esc(r.bio)}</small>`},
+  library_resources:{label:"Biblioteca",publish:true,
+    form:[["category","Categoria","select",LIB_CATS],["title","Título (opcional se enviar ficheiros: usa-se o nome de cada ficheiro)"],["author","Autor (opcional)"],["subject","Disciplina (opcional)"],["grade","Classe (opcional)"],["description","Descrição (opcional)","textarea"],["file","Ficheiros (pode escolher vários)","file"],["file_url","…ou link (https://…) (opcional)","url"]],
+    line:r=>`<b>${esc(r.title)}</b><br><small>${esc([r.category,r.subject,r.grade,r.author].filter(Boolean).join(" · "))}</small>`},
   documents:{label:"Documentos",publish:true,
     form:[["title","Título"],["description","Descrição"],["file","Ficheiro (PDF, até 10 MB)","file"],["public_url","…ou link público (https://…)","url"]],
     line:r=>`<b>${esc(r.title)}</b><br><small>${esc(r.public_url)}</small>`}
@@ -134,9 +157,9 @@ $("#adminLogout").addEventListener("click",async()=>{await sb.auth.signOut();che
 async function loadTab(name){
   currentTab=name; const t=TABS[name];
   $$("#adminTabs .tab-btn").forEach(b=>b.classList.toggle("active",b.dataset.tab===name));
-  const {data,error}=await sb.from(name).select("*").order("created_at",{ascending:false}).limit(100);
+  const {data,error}=await sb.from(name).select("*").order("created_at",{ascending:false}).limit(300);
   let html="";
-  if(t.form) html+=`<form class="admin-form" data-add="${name}">${t.form.map(([k,l,ty])=>ty==="textarea"?`<label>${l}<textarea name="${k}" rows="3" ${k==="bio"?"":"required"}></textarea></label>`:`<label>${l}<input name="${k}" type="${ty||"text"}" ${k==="title"||k==="full_name"||k==="role"?"required":""}${ty==="file"&&name==="gallery_images"?" multiple":""}${ty==="file"?' accept="'+(name==="documents"?".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx":"image/*")+'"':""}></label>`).join("")}<button class="btn btn-primary" type="submit">Adicionar (fica oculto até publicar)</button></form>`;
+  if(t.form) html+=`<form class="admin-form" data-add="${name}">${t.form.map(([k,l,ty,opts])=>ty==="select"?`<label>${l}<select name="${k}">${opts.map(o=>`<option>${esc(o)}</option>`).join("")}</select></label>`:ty==="textarea"?`<label>${l}<textarea name="${k}" rows="3" ${k==="bio"||/opcional/.test(l)?"":"required"}></textarea></label>`:`<label>${l}<input name="${k}" type="${ty||"text"}" ${(k==="title"&&name!=="library_resources")||k==="full_name"||k==="role"?"required":""}${ty==="file"&&(name==="gallery_images"||name==="library_resources")?" multiple":""}${ty==="file"?' accept="'+(name==="documents"||name==="library_resources"?".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx":"image/*")+'"':""}></label>`).join("")}<button class="btn btn-primary" type="submit">Adicionar (fica oculto até publicar)</button></form>`;
   if(error) html+=`<p class="form-status">Erro ao carregar dados.</p>`;
   else if(!data.length) html+=`<p class="muted">Sem registos.</p>`;
   else html+=data.map(r=>`<div class="admin-row"><div class="admin-info">${t.line(r)}<br><small class="dim">${esc(fmt(r.created_at))}</small></div><div class="admin-actions">${
@@ -187,6 +210,29 @@ $("#adminBody").addEventListener("submit",async e=>{
       if(!error) ok++;
     }
     toast(`${ok} de ${files.length} imagens publicadas.`);
+    btn.disabled=false; loadTab(currentTab); loadPublic(); return;
+  }
+  if(tb==="library_resources"){
+    const base={category:row.category||"Livros",author:row.author||"",subject:row.subject||"",grade:row.grade||"",description:row.description||""};
+    if(!files.length){
+      if(!row.title||!row.file_url){toast("Indique o título e o link, ou escolha ficheiros.");btn.disabled=false;return;}
+      const {error}=await sb.from(tb).insert({...base,title:row.title,file_url:row.file_url});
+      toast(error?"Erro: verifique os campos (o link deve começar por https://).":"Adicionado à biblioteca.");
+      btn.disabled=false; if(!error)loadTab(currentTab); loadPublic(); return;
+    }
+    if(files.length>50){toast("Máximo de 50 ficheiros de cada vez.");btn.disabled=false;return;}
+    let ok=0, big=0;
+    for(let n=0;n<files.length;n++){
+      const fl=files[n];
+      if(fl.size>25*1024*1024){big++;continue;}
+      toast(`A enviar ${n+1} de ${files.length}…`);
+      const url=await uploadFile("documents",fl,"library/");
+      if(!url) continue;
+      const title=(files.length===1&&row.title)?row.title:fl.name.replace(/\.[^.]+$/,"").replace(/[_]+/g," ").trim();
+      const {error}=await sb.from(tb).insert({...base,title,file_url:url});
+      if(!error) ok++;
+    }
+    toast(`${ok} de ${files.length} publicados.${big?` ${big} com mais de 25 MB foram ignorados (use um link).`:""}`);
     btn.disabled=false; loadTab(currentTab); loadPublic(); return;
   }
   if(files[0]){
