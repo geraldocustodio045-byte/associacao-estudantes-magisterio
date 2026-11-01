@@ -19,6 +19,10 @@ function closeModal(id){const m=$(id);m.classList.remove("open");m.setAttribute(
 $("#openSuggestion").addEventListener("click",()=>openModal("#suggestionModal"));
 $$("[data-close-suggestion]").forEach(b=>b.addEventListener("click",()=>closeModal("#suggestionModal")));
 $$("[data-open-admin]").forEach(b=>b.addEventListener("click",()=>{openModal("#adminModal");checkStaff();}));
+$$("[data-open-privacy]").forEach(b=>b.addEventListener("click",()=>openModal("#privacyModal")));
+$$("[data-close-privacy]").forEach(b=>b.addEventListener("click",()=>closeModal("#privacyModal")));
+document.addEventListener("keydown",e=>{if(e.key==="Escape")closeModal("#privacyModal");});
+if(CFG.WHATSAPP_NUMBER){const w=$("#waFloat");w.href=`https://wa.me/${esc(CFG.WHATSAPP_NUMBER)}?text=${encodeURIComponent("Olá, gostaria de falar com a Associação dos Estudantes.")}`;w.hidden=false;}
 $$("[data-close-admin]").forEach(b=>b.addEventListener("click",()=>closeModal("#adminModal")));
 document.addEventListener("keydown",e=>{if(e.key==="Escape"){closeModal("#suggestionModal");closeModal("#adminModal");}});
 $$('a[href^="#"]').forEach(a=>a.addEventListener("click",e=>{const t=$(a.getAttribute("href"));if(t){e.preventDefault();t.scrollIntoView({behavior:"smooth"});history.replaceState(null,"",a.getAttribute("href"));}}));
@@ -59,6 +63,15 @@ async function loadPublic(){
     sb.from("announcements").select("*").eq("published",true).order("published_at",{ascending:false,nullsFirst:false}).limit(9),
     sb.from("events").select("*").eq("published",true).order("event_date",{ascending:true,nullsFirst:false}).limit(8),
     sb.from("documents").select("*").eq("published",true).order("created_at",{ascending:false}).limit(20)]);
+  const [g,m]=await Promise.all([
+    sb.from("gallery_images").select("*").eq("published",true).order("created_at",{ascending:false}).limit(200),
+    sb.from("executive_members").select("*").eq("published",true).order("sort_order",{ascending:true}).order("created_at",{ascending:true})]);
+  if(m.data?.length){
+    $("#teamGrid").innerHTML=m.data.map(r=>`<article class="team-card">${r.photo_url?`<img src="${esc(safeUrl(r.photo_url))}" alt="${esc(r.full_name)}" loading="lazy">`:`<div class="team-ph" aria-hidden="true">${esc(r.full_name.trim().split(/\s+/).map(w=>w[0]).slice(0,2).join("").toUpperCase())}</div>`}<h3>${esc(r.full_name)}</h3><p class="role">${esc(r.role)}</p>${r.bio?`<p class="bio">${esc(r.bio)}</p>`:""}</article>`).join("");
+  }
+  if(g.data?.length){
+    $("#galleryGrid").innerHTML=g.data.map(r=>`<button type="button" class="g-item" data-src="${esc(safeUrl(r.image_url))}" data-cap="${esc(r.caption)}" aria-label="Ver imagem"><img src="${esc(safeUrl(r.image_url))}" alt="${esc(r.caption)}" loading="lazy"></button>`).join("");
+  }
   const col=["blue","gold","green"];
   if(a.data?.length){
     $("#newsGrid").innerHTML=a.data.map((r,i)=>`<article class="news-card${i===0?" featured":""}"><div class="news-visual visual-${col[i%3]}"><span>COMUNICADO</span><b>AE</b></div><div class="card-body"><p class="meta">${esc(fmt(r.published_at||r.created_at))}</p><h3>${esc(r.title)}</h3><p>${esc(r.summary)}</p></div></article>`).join("");
@@ -85,6 +98,12 @@ const TABS={
   events:{label:"Actividades",publish:true,
     form:[["title","Título"],["details","Detalhes","textarea"],["event_date","Data e hora","datetime-local"],["location","Local"],["file","Imagem (opcional)","file"]],
     line:r=>`<b>${esc(r.title)}</b>${r.event_date?" · "+esc(fmt(r.event_date)):""}<br><small>${esc(r.details)}</small>`},
+  gallery_images:{label:"Galeria",publish:true,
+    form:[["caption","Legenda (opcional)"],["file","Imagens (pode escolher várias)","file"]],
+    line:r=>`<img class="thumb" src="${esc(safeUrl(r.image_url))}" alt=""> ${esc(r.caption)}`},
+  executive_members:{label:"Executivo",publish:true,
+    form:[["full_name","Nome completo"],["role","Cargo (ex.: Presidente)"],["bio","Biografia","textarea"],["sort_order","Ordem de apresentação (1, 2, 3, 4)","number"],["file","Fotografia (opcional)","file"]],
+    line:r=>`${r.photo_url?`<img class="thumb" src="${esc(safeUrl(r.photo_url))}" alt="">`:""}<b>${esc(r.full_name)}</b> · ${esc(r.role)} <small>(ordem ${esc(r.sort_order)})</small><br><small>${esc(r.bio)}</small>`},
   documents:{label:"Documentos",publish:true,
     form:[["title","Título"],["description","Descrição"],["file","Ficheiro (PDF, até 10 MB)","file"],["public_url","…ou link público (https://…)","url"]],
     line:r=>`<b>${esc(r.title)}</b><br><small>${esc(r.public_url)}</small>`}
@@ -117,7 +136,7 @@ async function loadTab(name){
   $$("#adminTabs .tab-btn").forEach(b=>b.classList.toggle("active",b.dataset.tab===name));
   const {data,error}=await sb.from(name).select("*").order("created_at",{ascending:false}).limit(100);
   let html="";
-  if(t.form) html+=`<form class="admin-form" data-add="${name}">${t.form.map(([k,l,ty])=>ty==="textarea"?`<label>${l}<textarea name="${k}" rows="3" required></textarea></label>`:`<label>${l}<input name="${k}" type="${ty||"text"}" ${k==="title"?"required":""}${ty==="file"?' accept="'+(name==="documents"?".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx":"image/*")+'"':""}></label>`).join("")}<button class="btn btn-primary" type="submit">Adicionar (fica oculto até publicar)</button></form>`;
+  if(t.form) html+=`<form class="admin-form" data-add="${name}">${t.form.map(([k,l,ty])=>ty==="textarea"?`<label>${l}<textarea name="${k}" rows="3" ${k==="bio"?"":"required"}></textarea></label>`:`<label>${l}<input name="${k}" type="${ty||"text"}" ${k==="title"||k==="full_name"||k==="role"?"required":""}${ty==="file"&&name==="gallery_images"?" multiple":""}${ty==="file"?' accept="'+(name==="documents"?".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx":"image/*")+'"':""}></label>`).join("")}<button class="btn btn-primary" type="submit">Adicionar (fica oculto até publicar)</button></form>`;
   if(error) html+=`<p class="form-status">Erro ao carregar dados.</p>`;
   else if(!data.length) html+=`<p class="muted">Sem registos.</p>`;
   else html+=data.map(r=>`<div class="admin-row"><div class="admin-info">${t.line(r)}<br><small class="dim">${esc(fmt(r.created_at))}</small></div><div class="admin-actions">${
@@ -137,24 +156,58 @@ $("#adminBody").addEventListener("change",async e=>{
   const s=e.target.closest("[data-status]"); if(!s)return;
   const {error}=await sb.from(currentTab).update({status:s.value}).eq("id",s.dataset.status);toast(error?"Erro ao actualizar.":"Estado guardado.");
 });
+async function shrink(file){
+  if(!file.type.startsWith("image/")||file.type==="image/gif") return file;
+  try{const b=await createImageBitmap(file),sc=Math.min(1,1600/Math.max(b.width,b.height)),c=document.createElement("canvas");
+    c.width=Math.round(b.width*sc);c.height=Math.round(b.height*sc);c.getContext("2d").drawImage(b,0,0,c.width,c.height);
+    const bl=await new Promise(r=>c.toBlob(r,"image/jpeg",.82));
+    return bl?new File([bl],file.name.replace(/\.\w+$/,"")+".jpg",{type:"image/jpeg"}):file;}catch(e){return file;}
+}
+async function uploadFile(bucket,file,prefix=""){
+  const ext=(file.name.split(".").pop()||"bin").toLowerCase().replace(/[^a-z0-9]/g,"");
+  const path=`${prefix}${Date.now()}-${Math.random().toString(36).slice(2,8)}.${ext}`;
+  const up=await sb.storage.from(bucket).upload(path,file,{contentType:file.type||undefined});
+  return up.error?null:sb.storage.from(bucket).getPublicUrl(path).data.publicUrl;
+}
 $("#adminBody").addEventListener("submit",async e=>{
   const f=e.target.closest("[data-add]"); if(!f)return; e.preventDefault();
-  const row={}; let file=null;
-  for(const [k,v] of new FormData(f)){ if(v instanceof File){ if(v.size) file=v; } else if(v!=="") row[k]=v; }
-  const tb=f.dataset.add;
+  const tb=f.dataset.add, btn=$("button[type=submit]",f), row={}, files=[];
+  for(const [k,v] of new FormData(f)){ if(v instanceof File){ if(v.size) files.push(v); } else if(v!=="") row[k]=v; }
   if(row.event_date)row.event_date=new Date(row.event_date).toISOString();
-  if(file){
-    if(file.size>10*1024*1024){toast("Ficheiro acima de 10 MB.");return;}
-    const bucket=tb==="documents"?"documents":"event-images";
-    const ext=(file.name.split(".").pop()||"bin").toLowerCase().replace(/[^a-z0-9]/g,"");
-    const path=`${Date.now()}-${Math.random().toString(36).slice(2,8)}.${ext}`;
-    const up=await sb.storage.from(bucket).upload(path,file,{contentType:file.type||undefined});
-    if(up.error){toast("Erro no envio do ficheiro.");return;}
-    const url=sb.storage.from(bucket).getPublicUrl(path).data.publicUrl;
-    if(tb==="documents")row.public_url=url; else row.image_url=url;
+  btn.disabled=true;
+  if(tb==="gallery_images"){
+    if(!files.length){toast("Escolha pelo menos uma imagem.");btn.disabled=false;return;}
+    if(files.length>50){toast("Máximo de 50 imagens de cada vez.");btn.disabled=false;return;}
+    let ok=0;
+    for(let n=0;n<files.length;n++){
+      toast(`A enviar imagem ${n+1} de ${files.length}…`);
+      const url=await uploadFile("event-images",await shrink(files[n]),"gallery/");
+      if(!url) continue;
+      const {error}=await sb.from(tb).insert({image_url:url,caption:row.caption||""});
+      if(!error) ok++;
+    }
+    toast(`${ok} de ${files.length} imagens publicadas.`);
+    btn.disabled=false; loadTab(currentTab); loadPublic(); return;
   }
-  if(tb==="documents"&&!row.public_url){toast("Escolha um ficheiro ou indique um link.");return;}
-  const {error}=await sb.from(f.dataset.add).insert(row);
+  if(files[0]){
+    const file=files[0];
+    if(file.size>10*1024*1024){toast("Ficheiro acima de 10 MB.");btn.disabled=false;return;}
+    const bucket=tb==="documents"?"documents":"event-images";
+    const url=await uploadFile(bucket,tb==="documents"?file:await shrink(file),tb==="executive_members"?"members/":"");
+    if(!url){toast("Erro no envio do ficheiro.");btn.disabled=false;return;}
+    if(tb==="documents")row.public_url=url; else if(tb==="executive_members")row.photo_url=url; else row.image_url=url;
+  }
+  if(tb==="documents"&&!row.public_url){toast("Escolha um ficheiro ou indique um link.");btn.disabled=false;return;}
+  const {error}=await sb.from(tb).insert(row);
+  btn.disabled=false;
   toast(error?"Erro: verifique os campos (o link deve começar por https://).":"Adicionado. Use «Publicar» para o mostrar no site.");
   if(!error)loadTab(currentTab);
 });
+
+/* Galeria: ver imagem em ecrã inteiro */
+const lb=$("#lightbox");
+$("#galleryGrid").addEventListener("click",e=>{const b=e.target.closest(".g-item");if(!b)return;
+  $("img",lb).src=b.dataset.src;$("p",lb).textContent=b.dataset.cap;lb.hidden=false;document.body.style.overflow="hidden";});
+const closeLb=()=>{lb.hidden=true;document.body.style.overflow="";};
+lb.addEventListener("click",closeLb);
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!lb.hidden)closeLb();});

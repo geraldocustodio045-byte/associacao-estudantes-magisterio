@@ -19,3 +19,32 @@ a.document-row{color:inherit;text-decoration:none}
 .btn-sm.danger{color:#a32121;border-color:#e8c4c4}
 @media(max-width:600px){.admin-row{flex-direction:column}.admin-actions{justify-content:flex-start}}
 .event-img{display:block;width:100%;max-height:180px;object-fit:cover;border-radius:10px;margin-top:12px}
+
+/* Galeria */
+.gallery-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.g-item{padding:0;border:0;background:var(--cream);border-radius:12px;overflow:hidden;aspect-ratio:1;cursor:zoom-in}
+.g-item img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .25s}
+.g-item:hover img{transform:scale(1.04)}
+.lightbox{position:fixed;inset:0;z-index:60;background:#071329f2;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;gap:12px}
+.lightbox[hidden]{display:none!important}
+.lightbox img{max-width:96vw;max-height:80vh;border-radius:8px;object-fit:contain}
+.lightbox p{color:#fff;margin:0;text-align:center;font-size:.9rem}
+.lb-close{position:absolute;top:14px;right:16px;border:0;background:#ffffff22;color:#fff;font-size:1.8rem;width:44px;height:44px;border-radius:50%;cursor:pointer}
+.thumb{width:64px;height:64px;object-fit:cover;border-radius:8px;vertical-align:middle;margin-right:8px}
+
+/* Executivo, privacidade, WhatsApp */
+.team-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px}
+.team-card{border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;background:#fff}
+.team-card img,.team-ph{display:block;width:100%;aspect-ratio:4/5;object-fit:cover}
+.team-ph{display:grid;place-items:center;background:var(--navy);color:var(--gold);font:800 2.6rem Manrope,sans-serif}
+.team-card h3{margin:16px 18px 2px;font-size:1.1rem}
+.team-card .role{margin:0 18px 8px;color:var(--blue);font-weight:700;font-size:.82rem}
+.team-card .bio{margin:0 18px 18px;color:var(--muted);font-size:.85rem}
+.link-btn{background:none;border:0;padding:6px 0;color:var(--blue);font:600 .8rem "DM Sans";text-decoration:underline;cursor:pointer}
+.link-btn.light{color:#c3cedc;display:block;margin:10px auto 0}
+.wa-float{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:30;background:#1c9c58;color:#fff;text-decoration:none;font:700 .85rem "DM Sans";padding:12px 18px;border-radius:999px;box-shadow:0 8px 24px #0003}
+.wa-float[hidden]{display:none!important}
+.modal-panel p{font-size:.88rem}
+
+/* Menu recolhido também em ecrãs médios (há mais secções no menu) */
+@media(min-width:761px) and (max-width:1240px){.menu-toggle{display:block}nav{display:none;position:absolute;left:0;right:0;top:84px;background:white;padding:18px 6%;box-shadow:0 15px 25px #10264b18;align-items:stretch;flex-direction:column;gap:0}nav.open{display:flex}nav a,.nav-login{text-align:left;padding:13px 4px;border-bottom:1px solid #eef0f3}.nav-login{margin-top:8px;padding:12px}}

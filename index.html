@@ -14,7 +14,7 @@
   </a>
   <button id="menuToggle" class="menu-toggle" aria-label="Abrir menu" aria-expanded="false">☰</button>
   <nav id="mainNav">
-    <a href="#inicio">Início</a><a href="#noticias">Notícias</a><a href="#eventos">Actividades</a>
+    <a href="#inicio">Início</a><a href="#noticias">Notícias</a><a href="#eventos">Actividades</a><a href="#galeria">Galeria</a><a href="#executivo">Executivo</a>
     <a href="#membro">Ser membro</a><a href="#documentos">Documentos</a><a href="#contactos">Contactos</a>
     <button class="nav-login" data-open-admin>Área da Direcção</button>
   </nav>
@@ -56,6 +56,10 @@
   </div>
 </div></section>
 
+<section class="section" id="galeria"><div class="section-head"><div><p class="eyebrow dark">MOMENTOS</p><h2>Galeria</h2><p class="muted">Fotografias das actividades da Associação. Toque numa imagem para a ver maior.</p></div></div><div id="galleryGrid" class="gallery-grid"><p class="muted">As fotografias serão publicadas aqui.</p></div></section>
+
+<section class="section" id="executivo"><div class="section-head"><div><p class="eyebrow dark">LIDERANÇA</p><h2>Membros executivos</h2><p class="muted">Conheça quem representa os estudantes.</p></div></div><div id="teamGrid" class="team-grid"><p class="muted">Os membros executivos serão apresentados aqui.</p></div></section>
+
 <section class="section split-section" id="membro">
   <div class="member-copy"><p class="eyebrow dark">FAÇA PARTE</p><h2>A Associação também é sua.</h2><p class="muted">Se pretendes participar activamente na vida estudantil, preenche o formulário. A inscrição só será considerada oficial depois de validada pela Direcção.</p>
     <ul class="check-list"><li>Participação responsável</li><li>Respeito pela comunidade escolar</li><li>Colaboração e espírito de equipa</li></ul>
@@ -67,7 +71,7 @@
     <div class="form-row"><label>Curso<input name="course" required maxlength="80" placeholder="Ex.: Língua Portuguesa"></label><label>Classe<input name="grade" required maxlength="30" placeholder="Ex.: 11.ª classe"></label></div>
     <label>Contacto telefónico<input name="phone" inputmode="tel" required maxlength="30" placeholder="Número de telefone"></label><label>E-mail (opcional)<input name="email" type="email" autocomplete="email" maxlength="120" placeholder="O seu e-mail"></label>
     <label>Por que deseja participar? <textarea name="motivation" rows="3" maxlength="600" placeholder="Escreva brevemente (opcional)"></textarea></label>
-    <label class="consent"><input type="checkbox" name="consent" required> Confirmo que os dados são correctos e aceito que a Direcção os utilize para tratar este pedido.</label>
+    <label class="consent"><input type="checkbox" name="consent" required> Confirmo que os dados são correctos e aceito que a Direcção os utilize para tratar este pedido.</label><button type="button" class="link-btn" data-open-privacy>Ver aviso de privacidade</button>
     <button class="btn btn-primary full" type="submit">Enviar pedido <span>→</span></button><p class="form-status" id="memberStatus" aria-live="polite"></p>
   </form>
 </section>
@@ -89,13 +93,21 @@
 </div></section>
 </main>
 
-<footer><a class="footer-brand" href="#inicio">AE <b>1028</b></a><p>Associação dos Estudantes do Magistério Nº 1028 CNO, Comandante Benedito.</p><small>Portal independente de informação e participação estudantil · <span id="year"></span></small></footer>
+<footer><a class="footer-brand" href="#inicio">AE <b>1028</b></a><p>Associação dos Estudantes do Magistério Nº 1028 CNO, Comandante Benedito.</p><small>Portal independente de informação e participação estudantil · <span id="year"></span></small><button type="button" class="link-btn light" data-open-privacy>Privacidade e dados pessoais</button></footer>
 
 <div class="modal" id="suggestionModal" aria-hidden="true"><div class="modal-backdrop" data-close-suggestion></div><div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="suggestionTitle"><button class="modal-close" data-close-suggestion aria-label="Fechar">×</button><p class="eyebrow dark">PARTICIPAÇÃO ESTUDANTIL</p><h2 id="suggestionTitle">Envie a sua mensagem</h2><form id="suggestionForm"><input class="hp" name="website" tabindex="-1" autocomplete="off" aria-hidden="true"><label>Tipo de mensagem<select name="type" required><option value="Sugestão">Sugestão</option><option value="Reclamação">Reclamação</option><option value="Dúvida">Dúvida</option></select></label><label>Nome (opcional)<input name="name" maxlength="100" placeholder="Pode deixar em branco"></label><label>Mensagem<textarea name="message" required minlength="5" maxlength="1500" rows="5" placeholder="Explique a situação com respeito e clareza"></textarea></label><button class="btn btn-primary full" type="submit">Enviar mensagem</button><p class="form-status" id="suggestionStatus" aria-live="polite"></p></form></div></div>
 
 <div class="modal" id="adminModal" aria-hidden="true"><div class="modal-backdrop" data-close-admin></div><div class="modal-panel admin-wide" role="dialog" aria-modal="true" aria-labelledby="adminTitle"><button class="modal-close" data-close-admin aria-label="Fechar">×</button><p class="eyebrow dark">ACESSO RESTRITO</p><h2 id="adminTitle">Área da Direcção</h2>
 <form id="adminLogin"><label>E-mail<input type="email" name="email" autocomplete="username" required></label><label>Palavra-passe<input type="password" name="password" autocomplete="current-password" required></label><button class="btn btn-primary full" type="submit">Entrar</button><p class="form-status" id="adminStatus" aria-live="polite"></p></form>
 <div id="adminPanel" hidden><div class="admin-bar"><div id="adminTabs" class="admin-tabs"></div><button class="btn btn-primary" id="adminLogout" type="button">Sair</button></div><div id="adminBody"></div></div></div></div>
+<div class="modal" id="privacyModal" aria-hidden="true"><div class="modal-backdrop" data-close-privacy></div><div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="privacyTitle"><button class="modal-close" data-close-privacy aria-label="Fechar">×</button><p class="eyebrow dark">TRANSPARÊNCIA</p><h2 id="privacyTitle">Privacidade e dados pessoais</h2>
+<p><strong>O que recolhemos:</strong> apenas o que preencher nos formulários, como nome, curso, classe, telefone, e-mail (opcional) e a mensagem que escrever.</p>
+<p><strong>Para quê:</strong> tratar o seu pedido de inscrição e responder a sugestões, dúvidas ou reclamações.</p>
+<p><strong>Quem pode ver:</strong> só a Direcção da Associação, com acesso autorizado. Os dados não são publicados no site.</p>
+<p><strong>Os seus direitos:</strong> pode pedir a correcção ou a remoção dos seus dados através dos contactos oficiais da Associação, na secção Contactos.</p>
+<p class="muted">Não envie palavras-passe nem informações que não sejam pedidas.</p></div></div>
+<a class="wa-float" id="waFloat" href="#" target="_blank" rel="noopener" hidden>WhatsApp</a>
+<div class="lightbox" id="lightbox" hidden><button class="lb-close" type="button" aria-label="Fechar">×</button><img alt=""><p></p></div>
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="config.js"></script>
