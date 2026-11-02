@@ -329,3 +329,12 @@ if(isIOS&&!isStandalone){$("#installBtn").hidden=false;}
 $("#installBtn").addEventListener("click",async()=>{if(isIOS&&!installEv){toast("Toque em Partilhar (quadrado com seta) e depois em «Adicionar ao ecrã principal».",9000);return;}if(!installEv)return;installEv.prompt();await installEv.userChoice;installEv=null;$("#installBtn").hidden=true;});
 window.addEventListener("appinstalled",()=>{$("#installBtn").hidden=true;});
 if("serviceWorker" in navigator) window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));
+
+/* Menu agrupado e animações suaves */
+$$(".nav-gbtn").forEach(b=>b.addEventListener("click",()=>{const g=b.parentElement,o=g.classList.contains("open");$$(".nav-group").forEach(x=>x.classList.remove("open"));if(!o)g.classList.add("open");}));
+$$("#mainNav a").forEach(a=>a.addEventListener("click",()=>$$(".nav-group").forEach(x=>x.classList.remove("open"))));
+document.addEventListener("click",e=>{if(!e.target.closest(".nav-group"))$$(".nav-group").forEach(x=>x.classList.remove("open"));});
+if("IntersectionObserver" in window&&!matchMedia("(prefers-reduced-motion: reduce)").matches){
+  const io=new IntersectionObserver(es=>es.forEach(en=>{if(en.isIntersecting){en.target.classList.add("in");io.unobserve(en.target);}}),{threshold:.08});
+  $$("main > section:not(.hero)").forEach(el=>{el.classList.add("reveal");io.observe(el);});
+}

@@ -18,8 +18,10 @@
 <meta property="og:description" content="Notícias, actividades, biblioteca, quadros de honra e contactos da Associação dos Estudantes do Magistério Nº 1028 CNO, Comandante Benedito.">
 <meta name="theme-color" content="#10264b">
 <link rel="apple-touch-icon" href="icon-180.png">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"EducationalOrganization","name":"Associação dos Estudantes do Magistério Nº 1028 CNO","description":"Portal oficial da Associação dos Estudantes do Magistério Nº 1028 CNO, Comandante Benedito.","slogan":"Juntos pelo conhecimento, pela educação e um futuro melhor"}</script>
 </head>
 <body>
+<a class="skip" href="#conteudo">Saltar para o conteúdo</a>
 <header class="topbar">
   <a class="brand" href="#inicio" aria-label="Página inicial">
     <img class="brand-logo" src="logo.png" alt="Logótipo da Associação dos Estudantes do Magistério Nº 1028 CNO">
@@ -27,22 +29,26 @@
   </a>
   <button id="menuToggle" class="menu-toggle" aria-label="Abrir menu" aria-expanded="false">☰</button>
   <nav id="mainNav">
-    <a href="#inicio">Início</a><a href="#noticias">Notícias</a><a href="#eventos">Actividades</a><a href="#galeria">Galeria</a><a href="#executivo">Executivo</a><a id="navQuadros" href="#honra" hidden>Quadros</a>
-    <a href="#membro">Ser membro</a><a href="#biblioteca">Biblioteca</a><a href="#documentos">Documentos</a><a id="navDuvidas" href="#duvidas" hidden>Dúvidas</a><a href="#contactos">Contactos</a>
+    <a href="#inicio">Início</a>
+    <div class="nav-group"><button class="nav-gbtn" type="button">A Associação</button><div class="nav-sub"><a href="#associacao">Quem somos</a><a href="#executivo">Executivo</a><a id="navQuadros" href="#honra" hidden>Quadros de honra</a></div></div>
+    <div class="nav-group"><button class="nav-gbtn" type="button">Informação</button><div class="nav-sub"><a href="#noticias">Notícias</a><a href="#eventos">Actividades</a><a href="#galeria">Galeria</a></div></div>
+    <div class="nav-group"><button class="nav-gbtn" type="button">Estudantes</button><div class="nav-sub"><a href="#membro">Ser membro</a><a href="#biblioteca">Biblioteca</a><a href="#documentos">Documentos</a><a id="navDuvidas" href="#duvidas" hidden>Dúvidas</a></div></div>
+    <a href="#contactos">Contactos</a>
     <button class="nav-login" data-open-admin>Área da Direcção</button>
   </nav>
 </header>
 
-<main>
+<main id="conteudo">
 <section class="hero" id="inicio">
   <div class="hero-shade"></div>
   <div class="hero-content">
     <p class="eyebrow">REPRESENTAR · PARTICIPAR · CONSTRUIR</p>
     <h1>A voz dos estudantes.<br><em>O futuro da nossa escola.</em></h1>
+    <p class="hero-motto">Juntos pelo conhecimento, pela educação e um futuro melhor.</p>
     <p class="hero-copy">Um espaço de informação, participação e união para a comunidade estudantil do Magistério Nº 1028 CNO, Comandante Benedito.</p>
     <div class="hero-actions"><a class="btn btn-light" href="#noticias">Ver comunicados <span>↗</span></a><a class="btn btn-outline" href="#membro">Quero participar</a></div>
   </div>
-  <div class="hero-stamp"><span>AE</span><strong>1028</strong><small>ESTUDANTES UNIDOS</small></div>
+  <div class="hero-logo"><img src="logo.png" alt="Logótipo da Associação dos Estudantes"></div>
 </section>
 
 <section class="quick-strip" aria-label="Princípios da associação">
@@ -50,6 +56,15 @@
   <div><span class="quick-icon">◇</span><strong>Transparência</strong><small>Informação acessível</small></div>
   <div><span class="quick-icon">✳</span><strong>Participação</strong><small>Construir em conjunto</small></div>
 </section>
+
+<section class="section quick-access" aria-label="Acesso rápido aos serviços"><div class="tiles">
+  <a class="tile" href="#membro"><b>01</b><strong>Ser membro</strong><small>Peça a sua inscrição</small></a>
+  <a class="tile" href="#biblioteca"><b>02</b><strong>Biblioteca</strong><small>Livros e materiais didáticos</small></a>
+  <button class="tile" type="button" data-ask><b>03</b><strong>Sugestão ou dúvida</strong><small>Fale com a Direcção</small></button>
+  <a class="tile" href="#documentos"><b>04</b><strong>Documentos</strong><small>Regulamentos e actas</small></a>
+  <a class="tile" href="#eventos"><b>05</b><strong>Actividades</strong><small>Próximos eventos</small></a>
+  <a class="tile" href="#contactos"><b>06</b><strong>Contactos</strong><small>Telefones e e-mail</small></a>
+</div></section>
 
 <section class="section" id="noticias">
   <div class="section-head"><div><p class="eyebrow dark">INFORMAÇÃO OFICIAL</p><h2>Notícias & comunicados</h2><p class="muted">Acompanhe avisos e informações da Associação.</p></div><span class="section-number">01 / INFORMAÇÃO</span></div>
@@ -70,6 +85,11 @@
 </div></section>
 
 <section class="section" id="galeria"><div class="section-head"><div><p class="eyebrow dark">MOMENTOS</p><h2>Galeria</h2><p class="muted">Fotografias das actividades da Associação. Toque numa imagem para a ver maior.</p></div></div><div id="galleryGrid" class="gallery-grid"><p class="muted">As fotografias serão publicadas aqui.</p></div></section>
+
+<section class="section" id="associacao"><div class="section-head"><div><p class="eyebrow dark">QUEM SOMOS</p><h2>A Associação dos Estudantes</h2><p class="muted">Juntos pelo conhecimento, pela educação e um futuro melhor.</p></div></div>
+<p class="about-text">A Associação dos Estudantes do Magistério Nº 1028 CNO, Comandante Benedito, dá voz à comunidade estudantil e promove a informação, a participação e a união entre os estudantes.</p>
+<h3 class="areas-title">Áreas de formação</h3>
+<div class="areas"><div class="area a-pt">Língua Portuguesa e Educação Moral e Cívica</div><div class="area a-bq">Biologia e Química</div><div class="area a-mf">Matemática e Física</div><div class="area a-gh">Geografia e História</div><div class="area a-ep">Ensino Primário</div></div></section>
 
 <section class="section" id="executivo"><div class="section-head"><div><p class="eyebrow dark">LIDERANÇA</p><h2>Membros executivos</h2><p class="muted">Conheça quem representa os estudantes.</p></div></div><div id="teamGrid" class="team-grid"><p class="muted">Os membros executivos serão apresentados aqui.</p></div></section>
 
