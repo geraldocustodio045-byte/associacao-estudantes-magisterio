@@ -1,3 +1,4 @@
+if(window.top!==window.self){try{window.top.location.href=window.self.location.href;}catch(e){}}
 /* Portal da Associação — ligado ao Supabase. */
 const $ = (s, r=document) => r.querySelector(s);
 const $$ = (s, r=document) => [...r.querySelectorAll(s)];
@@ -195,7 +196,7 @@ async function loadTab(name){
   currentTab=name; const t=TABS[name];
   $$("#adminTabs .tab-btn").forEach(b=>b.classList.toggle("active",b.dataset.tab===name));
   const {data,error}=await sb.from(name).select("*").order("created_at",{ascending:false}).limit(300);
-  let html="";
+  let html=`<p><button type="button" class="btn-sm" data-export>Exportar tudo em CSV (cópia de segurança)</button></p>`;
   if(t.form) html+=`<form class="admin-form" data-add="${name}">${t.form.map(([k,l,ty,opts])=>ty==="select"?`<label>${l}<select name="${k}">${opts.map(o=>`<option>${esc(o)}</option>`).join("")}</select></label>`:ty==="textarea"?`<label>${l}<textarea name="${k}" rows="3" ${k==="bio"||/opcional/.test(l)?"":"required"}></textarea></label>`:`<label>${l}<input name="${k}" type="${ty||"text"}"${ty==="number"?' step="any"':""} ${(k==="title"&&name!=="library_resources")||k==="full_name"||k==="role"||k==="question"?"required":""}${ty==="file"&&(name==="gallery_images"||name==="library_resources")?" multiple":""}${ty==="file"?' accept="'+(name==="documents"||name==="library_resources"?".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx":"image/*")+'"':""}></label>`).join("")}<button class="btn btn-primary" type="submit">Adicionar (fica oculto até publicar)</button></form>`;
   if(error) html+=`<p class="form-status">Erro ao carregar dados.</p>`;
   else if(!data.length) html+=`<p class="muted">Sem registos.</p>`;
@@ -206,7 +207,30 @@ async function loadTab(name){
   $("#adminBody").innerHTML=html;
 }
 $("#adminTabs").addEventListener("click",e=>{const b=e.target.closest("[data-tab]");if(b)loadTab(b.dataset.tab);});
+function toCsv(rows){
+  if(!rows.length) return "";
+  const cols=Object.keys(rows[0]);
+  const q=v=>{let t=(v===null||v===undefined)?"":String(v); if(/^[=+\-@\t\r]/.test(t)) t="'"+t; return '"'+t.replace(/"/g,'""')+'"';};
+  return [cols.join(","),...rows.map(r=>cols.map(c=>q(r[c])).join(","))].join("\r\n");
+}
+async function exportTab(){
+  toast("A preparar o ficheiro…");
+  let all=[],from=0;
+  for(;;){
+    const {data,error}=await sb.from(currentTab).select("*").order("created_at",{ascending:true}).range(from,from+999);
+    if(error){toast("Erro ao exportar.");return;}
+    if(!data||!data.length) break;
+    all=all.concat(data); if(data.length<1000) break; from+=1000;
+  }
+  if(!all.length){toast("Sem registos para exportar.");return;}
+  const b=new Blob(["\ufeff"+toCsv(all)],{type:"text/csv;charset=utf-8"});
+  const a=document.createElement("a"); a.href=URL.createObjectURL(b);
+  a.download=`${currentTab}-${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),1500);
+  toast(`${all.length} registos exportados.`);
+}
 $("#adminBody").addEventListener("click",async e=>{
+  if(e.target.closest("[data-export]")){await exportTab();return;}
   const pub=e.target.closest("[data-pub]"), del=e.target.closest("[data-del]");
   if(pub){const on=pub.dataset.on!=="true";const up={published:on};if(on&&currentTab==="announcements")up.published_at=new Date().toISOString();
     const {error}=await sb.from(currentTab).update(up).eq("id",pub.dataset.pub);toast(error?"Erro ao actualizar.":"Actualizado.");loadTab(currentTab);loadPublic();}
