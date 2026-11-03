@@ -39,7 +39,8 @@
 </header>
 
 <main id="conteudo">
-<section class="hero" id="inicio">
+<div id="roomBar" class="room-bar" hidden></div>
+<section class="hero" id="inicio" data-lobby>
   <div class="hero-shade"></div>
   <div class="hero-content">
     <p class="eyebrow">REPRESENTAR · PARTICIPAR · CONSTRUIR</p>
@@ -51,20 +52,13 @@
   <div class="hero-logo"><img src="logo.png" alt="Logótipo da Associação dos Estudantes"></div>
 </section>
 
-<section class="quick-strip" aria-label="Princípios da associação">
+<section class="quick-strip" data-lobby aria-label="Princípios da associação">
   <div><span class="quick-icon">◎</span><strong>Representação</strong><small>Dar voz aos estudantes</small></div>
   <div><span class="quick-icon">◇</span><strong>Transparência</strong><small>Informação acessível</small></div>
   <div><span class="quick-icon">✳</span><strong>Participação</strong><small>Construir em conjunto</small></div>
 </section>
 
-<section class="section quick-access" aria-label="Acesso rápido aos serviços"><div class="tiles">
-  <a class="tile" href="#membro"><b>01</b><strong>Ser membro</strong><small>Peça a sua inscrição</small></a>
-  <a class="tile" href="#biblioteca"><b>02</b><strong>Biblioteca</strong><small>Livros e materiais didáticos</small></a>
-  <button class="tile" type="button" data-ask><b>03</b><strong>Sugestão ou dúvida</strong><small>Fale com a Direcção</small></button>
-  <a class="tile" href="#documentos"><b>04</b><strong>Documentos</strong><small>Regulamentos e actas</small></a>
-  <a class="tile" href="#eventos"><b>05</b><strong>Actividades</strong><small>Próximos eventos</small></a>
-  <a class="tile" href="#contactos"><b>06</b><strong>Contactos</strong><small>Telefones e e-mail</small></a>
-</div></section>
+<section class="section" id="salas" data-lobby><div class="section-head"><div><p class="eyebrow dark">O PORTAL</p><h2>Entre num espaço</h2><p class="muted">Cada espaço tem o seu assunto. Escolha o que procura.</p></div></div><div id="doors"></div></section>
 
 <section class="section" id="noticias">
   <div class="section-head"><div><p class="eyebrow dark">INFORMAÇÃO OFICIAL</p><h2>Notícias & comunicados</h2><p class="muted">Acompanhe avisos e informações da Associação.</p></div><span class="section-number">01 / INFORMAÇÃO</span></div>
@@ -113,7 +107,7 @@
   </form>
 </section>
 
-<section class="suggestion-band"><div><p class="eyebrow">A SUA OPINIÃO É IMPORTANTE</p><h2>Tem uma sugestão ou reclamação?</h2><p>Ajude-nos a identificar problemas e melhorar a representação estudantil.</p></div><button class="btn btn-light" id="openSuggestion">Enviar mensagem <span>→</span></button></section>
+<section class="suggestion-band" id="sugestoes"><div><p class="eyebrow">A SUA OPINIÃO É IMPORTANTE</p><h2>Tem uma sugestão ou reclamação?</h2><p>Ajude-nos a identificar problemas e melhorar a representação estudantil.</p></div><button class="btn btn-light" id="openSuggestion">Enviar mensagem <span>→</span></button></section>
 
 <section class="section" id="biblioteca"><div class="section-head"><div><p class="eyebrow dark">APRENDER</p><h2>Biblioteca e materiais didáticos</h2><p class="muted">Livros, manuais, fichas, provas e outros recursos para estudar.</p></div></div>
 <div class="lib-tools"><input id="libSearch" type="search" placeholder="Pesquisar por título, autor ou disciplina" aria-label="Pesquisar recursos"><select id="libCat" aria-label="Categoria"></select></div>
@@ -136,6 +130,7 @@
   <div><p class="eyebrow">ESTAMOS DISPONÍVEIS</p><h2>Vamos manter<br>o contacto.</h2><p class="muted light-muted">Para informações, propostas ou assuntos relacionados com a Associação, utilize os canais oficiais.</p></div>
   <div class="contact-card"><div class="contact-item"><span>01</span><div><small>INSTITUIÇÃO</small><strong>Magistério Nº 1028 CNO</strong><p>Comandante Benedito</p></div></div><div class="contact-item"><span>02</span><div><small>WHATSAPP</small><strong id="whatsLabel">Contacto por configurar</strong><p>O número oficial será inserido pela Direcção.</p></div></div><div class="contact-item"><span>03</span><div><small>TELEFONES</small><strong id="phoneLabel">Por configurar</strong><p>Contactos telefónicos oficiais da Associação.</p></div></div><div class="contact-item"><span>04</span><div><small>CORREIO ELECTRÓNICO</small><strong id="emailLabel">E-mail por configurar</strong><p>Será anunciado quando existir um endereço oficial.</p></div></div><button class="btn btn-outline" id="contactBtn">Configurar contactos <span>↗</span></button></div>
 </div></section>
+<div id="roomNext" class="room-next" hidden></div>
 </main>
 
 <footer><a class="footer-brand" href="#inicio">AE <b>1028</b></a><p>Associação dos Estudantes do Magistério Nº 1028 CNO, Comandante Benedito.</p><small>Portal independente de informação e participação estudantil · <span id="year"></span></small><button type="button" class="link-btn light" id="installBtn" hidden>Instalar a app no telemóvel</button><button type="button" class="link-btn light" data-open-privacy>Privacidade e dados pessoais</button></footer>

@@ -11,6 +11,49 @@ const sb = (CFG.SUPABASE_URL && CFG.SUPABASE_ANON_KEY && window.supabase) ? wind
 
 $("#year").textContent = new Date().getFullYear();
 
+/* Salas (quartos) do portal */
+const GROUPS={a:{t:"A Associação",c:"#10264b"},i:{t:"Informação",c:"#2c5e91"},e:{t:"Estudantes",c:"#1f6b3a"},c:{t:"Contactos",c:"#7a3b8c"}};
+const ROOMS={
+  associacao:{g:"a",t:"Quem somos",d:"Identidade e áreas de formação",ids:["associacao"]},
+  executivo:{g:"a",t:"Executivo",d:"Os membros da Direcção",ids:["executivo"]},
+  quadros:{g:"a",t:"Quadros de honra e mérito",d:"Alunos de excelência",ids:["honra","merito"],hide:true},
+  noticias:{g:"i",t:"Notícias e comunicados",d:"Avisos e informações oficiais",ids:["noticias"]},
+  eventos:{g:"i",t:"Actividades e eventos",d:"O que vem aí",ids:["eventos"]},
+  galeria:{g:"i",t:"Galeria",d:"Fotografias das actividades",ids:["galeria"]},
+  membro:{g:"e",t:"Ser membro",d:"Peça a sua inscrição",ids:["membro"]},
+  sugestoes:{g:"e",t:"Sugestões e reclamações",d:"A sua opinião conta",ids:["sugestoes"]},
+  biblioteca:{g:"e",t:"Biblioteca",d:"Livros e materiais didáticos",ids:["biblioteca"]},
+  documentos:{g:"e",t:"Documentos e actas",d:"Regulamentos oficiais",ids:["documentos"]},
+  duvidas:{g:"e",t:"Perguntas frequentes",d:"Respostas rápidas",ids:["duvidas"],hide:true},
+  contactos:{g:"c",t:"Contactos",d:"Fale connosco",ids:["contactos"]}
+};
+const visRooms=()=>Object.keys(ROOMS).filter(k=>!ROOMS[k].hide);
+function drawDoors(){
+  let n=0;
+  $("#doors").innerHTML=Object.entries(GROUPS).map(([gk,g])=>{
+    const ks=visRooms().filter(k=>ROOMS[k].g===gk); if(!ks.length) return "";
+    return `<div class="door-group" style="--accent:${g.c}"><h3>${esc(g.t)}</h3><div class="doors">${ks.map(k=>`<a class="door" href="#${k}"><b>${String(++n).padStart(2,"0")}</b><strong>${esc(ROOMS[k].t)}</strong><small>${esc(ROOMS[k].d)}</small><span>Entrar →</span></a>`).join("")}</div></div>`;
+  }).join("");
+}
+function showRoom(){
+  let key=location.hash.slice(1); if(key==="honra"||key==="merito") key="quadros";
+  const room=(ROOMS[key]&&!ROOMS[key].hide)?key:null;
+  $$("[data-lobby]").forEach(el=>el.classList.toggle("room-off",!!room));
+  Object.entries(ROOMS).forEach(([k,r])=>r.ids.forEach(id=>{const el=$("#"+id); if(el) el.classList.toggle("room-off",k!==room);}));
+  document.body.classList.toggle("in-room",!!room);
+  const bar=$("#roomBar"), nx=$("#roomNext"); bar.hidden=nx.hidden=!room;
+  if(room){
+    const r=ROOMS[room], g=GROUPS[r.g]; bar.style.setProperty("--accent",g.c);
+    bar.innerHTML=`<div class="room-bar-in"><p class="crumbs"><a href="#inicio">Início</a> › ${esc(g.t)}</p><h1>${esc(r.t)}</h1><p>${esc(r.d)}</p><a class="back" href="#inicio">← Voltar ao início</a></div>`;
+    const ks=visRooms(), i=ks.indexOf(room), p=ks[(i-1+ks.length)%ks.length], n=ks[(i+1)%ks.length];
+    nx.innerHTML=`<a href="#${p}">← ${esc(ROOMS[p].t)}</a><a class="mid" href="#inicio">Todos os espaços</a><a href="#${n}">${esc(ROOMS[n].t)} →</a>`;
+  }
+  document.title=room?`${ROOMS[room].t} | Associação dos Estudantes`:"Associação dos Estudantes | Magistério Nº 1028 CNO";
+  window.scrollTo(0,0);
+}
+window.addEventListener("hashchange",showRoom);
+drawDoors(); showRoom();
+
 /* Menu e modais */
 const menu=$("#mainNav"), menuToggle=$("#menuToggle");
 menuToggle.addEventListener("click",()=>{const o=menu.classList.toggle("open");menuToggle.setAttribute("aria-expanded",String(o));menuToggle.textContent=o?"×":"☰";});
@@ -26,7 +69,6 @@ document.addEventListener("keydown",e=>{if(e.key==="Escape")closeModal("#privacy
 if(CFG.WHATSAPP_NUMBER){const w=$("#waFloat");w.href=`https://wa.me/${esc(CFG.WHATSAPP_NUMBER)}?text=${encodeURIComponent("Olá, gostaria de falar com a Associação dos Estudantes.")}`;w.hidden=false;}
 $$("[data-close-admin]").forEach(b=>b.addEventListener("click",()=>closeModal("#adminModal")));
 document.addEventListener("keydown",e=>{if(e.key==="Escape"){closeModal("#suggestionModal");closeModal("#adminModal");}});
-$$('a[href^="#"]').forEach(a=>a.addEventListener("click",e=>{const t=$(a.getAttribute("href"));if(t){e.preventDefault();t.scrollIntoView({behavior:"smooth"});history.replaceState(null,"",a.getAttribute("href"));}}));
 
 /* Contactos */
 if(CFG.WHATSAPP_NUMBER) $("#whatsLabel").innerHTML=`<a href="https://wa.me/${esc(CFG.WHATSAPP_NUMBER)}" target="_blank" rel="noopener">Conversar no WhatsApp ↗</a>`;
@@ -69,11 +111,11 @@ function renderHonor(rows){
     $("#"+b).hidden=!list.length;
     if(list.length) $("#"+b+"Grid").innerHTML=list.map(honorCard).join("");
   }
-  const first=!$("#honra").hidden?"#honra":(!$("#merito").hidden?"#merito":null);
-  const n=$("#navQuadros"); if(first){n.setAttribute("href",first);n.hidden=false;} else n.hidden=true;
+  const any=!$("#honra").hidden||!$("#merito").hidden;
+  ROOMS.quadros.hide=!any; $("#navQuadros").setAttribute("href","#quadros"); $("#navQuadros").hidden=!any; drawDoors(); showRoom();
 }
 function renderFaq(rows){
-  $("#duvidas").hidden=!rows.length; $("#navDuvidas").hidden=!rows.length;
+  $("#duvidas").hidden=!rows.length; $("#navDuvidas").hidden=!rows.length; ROOMS.duvidas.hide=!rows.length; drawDoors(); showRoom();
   if(rows.length) $("#faqList").innerHTML=rows.map(r=>`<details class="faq-item"><summary>${esc(r.question)}</summary><p>${esc(r.answer)}</p></details>`).join("");
 }
 $$("[data-ask]").forEach(b=>b.addEventListener("click",()=>openModal("#suggestionModal")));
@@ -334,7 +376,3 @@ if("serviceWorker" in navigator) window.addEventListener("load",()=>navigator.se
 $$(".nav-gbtn").forEach(b=>b.addEventListener("click",()=>{const g=b.parentElement,o=g.classList.contains("open");$$(".nav-group").forEach(x=>x.classList.remove("open"));if(!o)g.classList.add("open");}));
 $$("#mainNav a").forEach(a=>a.addEventListener("click",()=>$$(".nav-group").forEach(x=>x.classList.remove("open"))));
 document.addEventListener("click",e=>{if(!e.target.closest(".nav-group"))$$(".nav-group").forEach(x=>x.classList.remove("open"));});
-if("IntersectionObserver" in window&&!matchMedia("(prefers-reduced-motion: reduce)").matches){
-  const io=new IntersectionObserver(es=>es.forEach(en=>{if(en.isIntersecting){en.target.classList.add("in");io.unobserve(en.target);}}),{threshold:.08});
-  $$("main > section:not(.hero)").forEach(el=>{el.classList.add("reveal");io.observe(el);});
-}
