@@ -213,6 +213,29 @@ $$("[data-ask]").forEach(b=>b.addEventListener("click",()=>openModal("#suggestio
 /* Biblioteca */
 const LIB_CATS=["Livros","Manuais escolares","Fichas e exercícios","Planos de aula","Provas e exames","Apontamentos","Legislação e regulamentos","Modelos e formulários","Ligações úteis","Outros"];
 const LIB_ICON={"Livros":"LIV","Manuais escolares":"MAN","Fichas e exercícios":"FIC","Planos de aula":"PLA","Provas e exames":"PRO","Apontamentos":"APO","Legislação e regulamentos":"LEI","Modelos e formulários":"MOD","Ligações úteis":"LNK","Outros":"OUT"};
+
+/* ---- Capas: imagem própria, miniatura da 1.ª página do PDF, ou capa gerada ---- */
+const hueOf=s=>[...String(s)].reduce((h,c)=>(h*31+c.charCodeAt(0))&0xffff,7)%360;
+function bookCard(title,sub,url,cover,tag,cat){
+  const h=hueOf(cat||title), u=safeUrl(url), isImg=/\.(jpe?g|png|webp|gif|avif)(\?|$)/i.test(u), isPdf=/\.pdf(\?|$)/i.test(u);
+  const img=(cover&&safeUrl(cover)!=="#")?safeUrl(cover):(isImg?u:"");
+  return `<a class="book" href="${esc(u)}" target="_blank" rel="noopener"><div class="cover" style="--c1:hsl(${h} 55% 22%);--c2:hsl(${(h+35)%360} 50% 40%)"${isPdf&&!img?` data-pdf="${esc(u)}"`:""}>${img?`<img src="${esc(img)}" alt="Capa de ${esc(title)}" loading="lazy" onerror="this.remove()">`:""}<small>${esc(tag)}</small><b>${esc(title)}</b></div><p class="book-title">${esc(title)}</p><p class="book-sub">${esc(sub||"")}</p></a>`;
+}
+const pdfThumbs=new Map(); let pdfLib=null;
+function loadPdfJs(){return pdfLib||(pdfLib=new Promise((ok,no)=>{const s=document.createElement("script");s.src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js";s.onload=()=>{pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js";ok(pdfjsLib);};s.onerror=no;document.head.appendChild(s);}));}
+const coverIO="IntersectionObserver" in window?new IntersectionObserver(es=>es.forEach(async e=>{
+  if(!e.isIntersecting) return; const el=e.target; coverIO.unobserve(el); const url=el.dataset.pdf;
+  try{
+    if(!pdfThumbs.has(url)){
+      const lib=await loadPdfJs(); const pdf=await lib.getDocument({url}).promise; const pg=await pdf.getPage(1);
+      const vp=pg.getViewport({scale:1}), sc=360/vp.width, v=pg.getViewport({scale:sc}), cv=document.createElement("canvas");
+      cv.width=v.width;cv.height=v.height; await pg.render({canvasContext:cv.getContext("2d"),viewport:v}).promise;
+      pdfThumbs.set(url,cv.toDataURL("image/jpeg",.78));
+    }
+    const im=new Image(); im.alt="Capa do documento"; im.src=pdfThumbs.get(url); el.prepend(im); el.classList.add("has-img");
+  }catch(err){/* mantém a capa gerada */}
+}),{rootMargin:"200px"}):null;
+function hydrateCovers(){ if(coverIO) $$(".cover[data-pdf]").forEach(el=>coverIO.observe(el)); }
 let LIB=[],libShown=12;
 $("#libCat").innerHTML=["Todas",...LIB_CATS].map(c=>`<option>${esc(c)}</option>`).join("");
 const norm=s=>String(s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
@@ -221,7 +244,8 @@ function renderLib(){
   const q=norm($("#libSearch").value), c=$("#libCat").value;
   const list=LIB.filter(r=>(c==="Todas"||r.category===c)&&(!q||norm([r.title,r.author,r.subject,r.grade,r.description].join(" ")).includes(q)));
   $("#libCount").textContent=`${list.length} de ${LIB.length} recursos`;
-  $("#libList").innerHTML=list.length?list.slice(0,libShown).map(r=>`<a class="document-row" href="${esc(safeUrl(r.file_url))}" target="_blank" rel="noopener"><div class="doc-icon">${LIB_ICON[r.category]||"DOC"}</div><div class="doc-info"><strong>${esc(r.title)}</strong><small>${esc([r.category,r.subject,r.grade,r.author].filter(Boolean).join(" · "))}</small></div><span class="doc-state">Abrir</span></a>`).join(""):`<p class="muted">Nenhum recurso encontrado.</p>`;
+  $("#libList").className="library";$("#libList").innerHTML=list.length?list.slice(0,libShown).map(r=>bookCard(r.title,[r.category,r.subject,r.grade,r.author].filter(Boolean).join(" · "),r.file_url,r.cover_url||r.image_url,LIB_ICON[r.category]||"DOC",r.category)).join(""):`<p class="muted">Nenhum recurso encontrado.</p>`;
+  hydrateCovers();
   $("#libMore").hidden=list.length<=libShown;
 }
 $("#libSearch").addEventListener("input",()=>{libShown=12;renderLib();});
@@ -244,7 +268,7 @@ async function loadPublic(){
   LIB=l.data||[]; renderLib();
   FAQ=f.data||[]; renderHonor(h.data||[]); renderFaq(f.data||[]);
   if(m.data?.length){
-    const execHtml=m.data.map(r=>`<article class="team-card">${r.photo_url?`<img src="${esc(safeUrl(r.photo_url))}" alt="${esc(r.full_name)}" loading="lazy">`:`<div class="team-ph" aria-hidden="true">${esc(r.full_name.trim().split(/\s+/).map(w=>w[0]).slice(0,2).join("").toUpperCase())}</div>`}<h3>${esc(r.full_name)}</h3><p class="role">${esc(r.role)}</p>${r.bio?`<p class="bio">${esc(r.bio)}</p>`:""}</article>`).join("");
+    const execHtml=m.data.map(r=>`<article class="team-card">${r.photo_url?`<img src="${esc(safeUrl(r.photo_url))}" alt="${esc(r.full_name)}" loading="lazy">`:`<div class="team-ph" aria-hidden="true">${esc(r.full_name.trim().split(/\s+/).map(w=>w[0]).slice(0,2).join("").toUpperCase())}</div>`}<h3>${esc(r.full_name)}</h3><p class="role">${esc(r.role)}</p>${r.bio?`<p class="bio">${esc(r.bio)}</p><button type="button" class="bio-btn" data-name="${esc(r.full_name)}" data-role="${esc(r.role)}">Ver biografia</button>`:""}</article>`).join("");
     $("#teamGrid").innerHTML=execHtml; $("#execGrid").innerHTML=execHtml;
   }
   GAL=g.data||[]; renderGallery();
@@ -259,7 +283,7 @@ async function loadPublic(){
       return `<article class="event-card"><div class="event-date"><b>${dt?String(dt.getDate()).padStart(2,"0"):"—"}</b><span>${dt?dt.toLocaleDateString("pt-PT",{month:"short"}).toUpperCase():"DATA"}</span></div><div><span class="tag">${esc(r.location||"EVENTO")}</span><h3>${esc(r.title)}</h3><p>${esc(r.details)}</p>${r.image_url?`<img class="event-img" src="${esc(safeUrl(r.image_url))}" alt="" loading="lazy">`:""}</div></article>`;}).join("");
   }
   if(d.data?.length){
-    $("#documentList").innerHTML=d.data.map(r=>`<a class="document-row" href="${esc(safeUrl(r.public_url))}" target="_blank" rel="noopener"><div class="doc-icon">DOC</div><div class="doc-info"><strong>${esc(r.title)}</strong><small>${esc(r.description)}</small></div><span class="doc-state">Abrir</span></a>`).join("");
+    $("#documentList").className="library";$("#documentList").innerHTML=d.data.map(r=>bookCard(r.title,r.description,r.public_url,r.cover_url,"DOC","Documento")).join("");hydrateCovers();
   }
 }
 loadPublic();
@@ -505,4 +529,32 @@ window.addEventListener("scroll",onScroll,{passive:true});onScroll();
   v.load(); v.play().catch(()=>{});
   document.addEventListener("visibilitychange",()=>{document.hidden?v.pause():v.play().catch(()=>{});});
   if("IntersectionObserver" in window) new IntersectionObserver(es=>es.forEach(en=>{en.isIntersecting?v.play().catch(()=>{}):v.pause();}),{threshold:.1}).observe($("#inicio"));
+})();
+
+
+/* ---- Biografia completa (janela) ---- */
+(function bioModal(){
+  const m=document.createElement("div"); m.className="bio-modal"; m.hidden=true;
+  m.innerHTML='<div class="bio-back"></div><div class="bio-panel" role="dialog" aria-modal="true" aria-labelledby="bioName"><button type="button" class="bio-x" aria-label="Fechar">×</button><div class="bio-photo"></div><p class="bio-role"></p><h2 id="bioName"></h2><p class="bio-text"></p></div>';
+  document.body.appendChild(m);
+  const close=()=>{m.classList.remove("open");document.body.classList.remove("bio-lock");setTimeout(()=>{m.hidden=true;},250);};
+  document.addEventListener("click",e=>{
+    const b=e.target.closest(".bio-btn"); if(b){const c=b.closest(".team-card");
+      m.querySelector("h2").textContent=b.dataset.name; m.querySelector(".bio-role").textContent=b.dataset.role;
+      m.querySelector(".bio-text").textContent=c.querySelector(".bio").textContent;
+      const im=c.querySelector("img"); m.querySelector(".bio-photo").innerHTML=im?`<img src="${esc(im.src)}" alt="">`:`<div class="team-ph">${esc(c.querySelector(".team-ph")?.textContent||"")}</div>`;
+      m.hidden=false; document.body.classList.add("bio-lock"); requestAnimationFrame(()=>m.classList.add("open")); m.querySelector(".bio-x").focus(); return;}
+    if(e.target.closest(".bio-x")||e.target.classList.contains("bio-back")) close();
+  });
+  document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!m.hidden)close();});
+})();
+
+/* ---- Fluidez: barra de progresso e revelação suave ---- */
+(function fluid(){
+  const p=document.createElement("div"); p.className="scroll-progress"; document.body.prepend(p);
+  addEventListener("scroll",()=>{const d=document.documentElement;p.style.transform=`scaleX(${scrollY/((d.scrollHeight-innerHeight)||1)})`;},{passive:true});
+  if(!("IntersectionObserver" in window)||matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add("in");io.unobserve(e.target);}}),{threshold:.1});
+  const seen=new WeakSet(), scan=()=>$$(".team-card,.honor-card,.news-card,.event-card,.book,.g-item,.section-head").forEach(el=>{if(seen.has(el))return;seen.add(el);const r=el.getBoundingClientRect();if(r.top<innerHeight)return;el.classList.add("rv");io.observe(el);});
+  scan(); new MutationObserver(scan).observe(document.querySelector("main"),{childList:true,subtree:true});
 })();
