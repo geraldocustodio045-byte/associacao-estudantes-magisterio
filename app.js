@@ -37,22 +37,26 @@ function drawDoors(){
     return `<div class="door-group" style="--accent:${g.c}"><h3>${esc(g.t)}</h3><div class="doors">${ks.map(k=>`<a class="door" href="#${k}"><b>${String(++n).padStart(2,"0")}</b><strong>${esc(ROOMS[k].t)}</strong><small>${esc(ROOMS[k].d)}</small><span>Entrar →</span></a>`).join("")}</div></div>`;
   }).join("");
 }
+$$("main > section").forEach(sx=>{if(!sx.hasAttribute("data-lobby")&&!sx.classList.contains("vhero"))$("#parking").appendChild(sx);});
+function closeRoom(){history.replaceState(null,"",location.pathname+location.search);showRoom();}
 function showRoom(){
   let key=location.hash.slice(1); if(key==="honra"||key==="merito") key="quadros";
   const room=(ROOMS[key]&&!ROOMS[key].hide)?key:null;
-  $$("[data-lobby]").forEach(el=>el.classList.toggle("room-off",!!room));
-  Object.entries(ROOMS).forEach(([k,r])=>r.ids.forEach(id=>{const el=$("#"+id); if(el) el.classList.toggle("room-off",k!==room);}));
-  document.body.classList.toggle("in-room",!!room);
-  const bar=$("#roomBar"), nx=$("#roomNext"); bar.hidden=nx.hidden=!room;
+  const rv=$("#roomView"),slot=$("#roomSlot"),park=$("#parking");
+  [...slot.children].forEach(el=>park.appendChild(el));
+  rv.hidden=!room; document.body.classList.toggle("room-open",!!room);
   if(room){
-    const r=ROOMS[room], g=GROUPS[r.g]; bar.style.setProperty("--accent",g.c);
-    bar.innerHTML=`<div class="room-bar-in"><p class="crumbs"><a href="#inicio">Início</a> › ${esc(g.t)}</p><h1>${esc(r.t)}</h1><p>${esc(r.d)}</p><a class="back" href="#inicio">← Voltar ao início</a></div>`;
-    const ks=visRooms(), i=ks.indexOf(room), p=ks[(i-1+ks.length)%ks.length], n=ks[(i+1)%ks.length];
-    nx.innerHTML=`<a href="#${p}">← ${esc(ROOMS[p].t)}</a><a class="mid" href="#inicio">Todos os espaços</a><a href="#${n}">${esc(ROOMS[n].t)} →</a>`;
+    const r=ROOMS[room],g=GROUPS[r.g]; rv.style.setProperty("--accent",g.c);
+    r.ids.forEach(id=>{const el=$("#"+id);if(el)slot.appendChild(el);});
+    $("#roomBar").innerHTML=`<p class="crumbs">${esc(g.t)}</p><h1>${esc(r.t)}</h1><p class="rb-d">${esc(r.d)}</p>`;
+    const ks=visRooms(),i=ks.indexOf(room),p=ks[(i-1+ks.length)%ks.length],n=ks[(i+1)%ks.length];
+    $("#roomNext").innerHTML=`<a href="#${p}">← ${esc(ROOMS[p].t)}</a><button type="button" class="mid" data-close-room>Todos os espaços</button><a href="#${n}">${esc(ROOMS[n].t)} →</a>`;
+    rv.scrollTop=0;
   }
   document.title=room?`${ROOMS[room].t} | Associação dos Estudantes`:"Associação dos Estudantes | Magistério Nº 1028 CNO";
-  window.scrollTo(0,0);
 }
+document.addEventListener("click",e=>{if(e.target.closest("[data-close-room]")||e.target.id==="roomView")closeRoom();});
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("#roomView").hidden&&!document.querySelector(".modal.open")&&$("#lightbox").hidden)closeRoom();});
 window.addEventListener("hashchange",showRoom);
 drawDoors(); showRoom();
 
@@ -240,7 +244,8 @@ async function loadPublic(){
   LIB=l.data||[]; renderLib();
   FAQ=f.data||[]; renderHonor(h.data||[]); renderFaq(f.data||[]);
   if(m.data?.length){
-    $("#teamGrid").innerHTML=m.data.map(r=>`<article class="team-card">${r.photo_url?`<img src="${esc(safeUrl(r.photo_url))}" alt="${esc(r.full_name)}" loading="lazy">`:`<div class="team-ph" aria-hidden="true">${esc(r.full_name.trim().split(/\s+/).map(w=>w[0]).slice(0,2).join("").toUpperCase())}</div>`}<h3>${esc(r.full_name)}</h3><p class="role">${esc(r.role)}</p>${r.bio?`<p class="bio">${esc(r.bio)}</p>`:""}</article>`).join("");
+    const execHtml=m.data.map(r=>`<article class="team-card">${r.photo_url?`<img src="${esc(safeUrl(r.photo_url))}" alt="${esc(r.full_name)}" loading="lazy">`:`<div class="team-ph" aria-hidden="true">${esc(r.full_name.trim().split(/\s+/).map(w=>w[0]).slice(0,2).join("").toUpperCase())}</div>`}<h3>${esc(r.full_name)}</h3><p class="role">${esc(r.role)}</p>${r.bio?`<p class="bio">${esc(r.bio)}</p>`:""}</article>`).join("");
+    $("#teamGrid").innerHTML=execHtml; $("#execGrid").innerHTML=execHtml;
   }
   GAL=g.data||[]; renderGallery();
   ANN=a.data||[]; DOCS=d.data||[];
@@ -484,3 +489,20 @@ document.addEventListener("click",e=>{if(!e.target.closest(".nav-group"))$$(".na
 refreshAccount();
 
 $("#adminBody").addEventListener("input",e=>{if(e.target.id!=="adminFind")return;const q=norm(e.target.value);$$(".admin-row",$("#adminBody")).forEach(r=>{r.hidden=!!q&&!norm(r.textContent).includes(q);});});
+
+/* Cabeçalho de vidro e vídeo de fundo */
+const onScroll=()=>document.body.classList.toggle("solid",window.scrollY>40);
+window.addEventListener("scroll",onScroll,{passive:true});onScroll();
+(function heroVideo(){
+  const v=$("#heroVideo"),media=$(".hero-media"); if(!v) return;
+  const c=navigator.connection||{}, slow=c.saveData||/(^|-)(2g|3g)$/.test(c.effectiveType||"");
+  if(matchMedia("(prefers-reduced-motion: reduce)").matches||slow) return;
+  v.muted=true;
+  const add=(src,type)=>{const so=document.createElement("source");so.src=src;so.type=type;v.appendChild(so);};
+  if(v.canPlayType("video/webm")) add(v.dataset.webm,"video/webm");
+  add(v.dataset.mp4,"video/mp4");
+  v.addEventListener("playing",()=>media.classList.add("playing"));
+  v.load(); v.play().catch(()=>{});
+  document.addEventListener("visibilitychange",()=>{document.hidden?v.pause():v.play().catch(()=>{});});
+  if("IntersectionObserver" in window) new IntersectionObserver(es=>es.forEach(en=>{en.isIntersecting?v.play().catch(()=>{}):v.pause();}),{threshold:.1}).observe($("#inicio"));
+})();

@@ -2,7 +2,7 @@
 <html lang="pt">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#10264b"><meta name="description" content="Portal oficial da Associação dos Estudantes do Magistério Nº 1028 CNO, Comandante Benedito.">
+<meta name="theme-color" content="#102A43"><meta name="description" content="Portal oficial da Associação dos Estudantes do Magistério Nº 1028 CNO, Comandante Benedito.">
 <title>Associação dos Estudantes | Magistério Nº 1028 CNO</title>
 <link rel="stylesheet" href="styles.css">
 <link rel="icon" type="image/png" href="icon-192.png">
@@ -19,6 +19,7 @@
 <meta name="theme-color" content="#10264b">
 <link rel="apple-touch-icon" href="icon-180.png">
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"EducationalOrganization","name":"Associação dos Estudantes do Magistério Nº 1028 CNO","description":"Portal oficial da Associação dos Estudantes do Magistério Nº 1028 CNO, Comandante Benedito.","slogan":"Juntos pelo conhecimento, pela educação e um futuro melhor"}</script>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap" rel="stylesheet">
 </head>
 <body>
 <a class="skip" href="#conteudo">Saltar para o conteúdo</a>
@@ -39,19 +40,19 @@
 </header>
 
 <main id="conteudo">
-<div id="roomBar" class="room-bar" hidden></div>
-<section class="hero" id="inicio" data-lobby>
-  <div class="hero-shade"></div>
-  <div class="hero-content">
-    <p class="eyebrow">REPRESENTAR · PARTICIPAR · CONSTRUIR</p>
-    <h1>A voz dos estudantes.<br><em>O futuro da nossa escola.</em></h1>
-    <p class="hero-motto">Juntos pelo conhecimento, pela educação e um futuro melhor.</p>
-    <p class="hero-copy">Um espaço de informação, participação e união para a comunidade estudantil do Magistério Nº 1028 CNO, Comandante Benedito.</p>
-    <div class="hero-actions"><a class="btn btn-light" href="#noticias">Ver comunicados <span>↗</span></a><a class="btn btn-outline" href="#membro">Quero participar</a></div>
-  </div>
-  <div class="hero-logo"><img src="logo.png" alt="Logótipo da Associação dos Estudantes"></div>
-</section>
 
+<section class="vhero" id="inicio" style="--ov:.6">
+  <div class="hero-media" aria-hidden="true"><img class="hero-poster" src="hero-poster.jpg" alt=""><video id="heroVideo" muted loop playsinline preload="none" poster="hero-poster.jpg" data-mp4="hero.mp4" data-webm="hero.webm"></video></div>
+  <div class="hero-overlay"></div>
+  <div class="vh-in">
+    <div class="vh-brand"><img class="vh-logo" src="logo.png" alt="Logótipo da Associação dos Estudantes"><p class="vh-name">Associação dos Estudantes<br>Magistério Nº 1028 CNO · Comandante Benedito</p></div>
+    <h1>Juntos pelo conhecimento, pela educação e <em>um futuro melhor</em></h1>
+    <p class="vh-d">A Associação dá voz à comunidade estudantil e promove a informação, a participação e a união entre os estudantes.</p>
+    <div class="vh-actions"><a class="vh-btn primary" href="#associacao">Conhecer a Associação</a><a class="vh-btn" href="#membro">Ser membro</a><a class="vh-btn" href="#biblioteca">Biblioteca</a><button class="vh-btn" type="button" data-ask>Enviar sugestão</button></div>
+  </div>
+  <a class="scroll-cue" href="#executivoHome" aria-label="Descer">↓</a>
+</section>
+<section class="home-exec" id="executivoHome" data-lobby><div class="he-in"><div class="he-head"><p class="eyebrow dark">LIDERANÇA</p><h2>Direcção da Associação</h2><p class="muted">Conheça quem representa os estudantes.</p></div><div id="execGrid" class="team-grid"><p class="muted">Os membros do executivo serão apresentados aqui.</p></div></div></section>
 <section class="quick-strip" data-lobby aria-label="Princípios da associação">
   <div><span class="quick-icon">◎</span><strong>Representação</strong><small>Dar voz aos estudantes</small></div>
   <div><span class="quick-icon">◇</span><strong>Transparência</strong><small>Informação acessível</small></div>
@@ -151,10 +152,17 @@
   <div><p class="eyebrow">ESTAMOS DISPONÍVEIS</p><h2>Vamos manter<br>o contacto.</h2><p class="muted light-muted">Para informações, propostas ou assuntos relacionados com a Associação, utilize os canais oficiais.</p></div>
   <div class="contact-card"><div class="contact-item"><span>01</span><div><small>INSTITUIÇÃO</small><strong>Magistério Nº 1028 CNO</strong><p>Comandante Benedito</p></div></div><div class="contact-item"><span>02</span><div><small>WHATSAPP</small><strong id="whatsLabel">Contacto por configurar</strong><p>O número oficial será inserido pela Direcção.</p></div></div><div class="contact-item"><span>03</span><div><small>TELEFONES</small><strong id="phoneLabel">Por configurar</strong><p>Contactos telefónicos oficiais da Associação.</p></div></div><div class="contact-item"><span>04</span><div><small>CORREIO ELECTRÓNICO</small><strong id="emailLabel">E-mail por configurar</strong><p>Será anunciado quando existir um endereço oficial.</p></div></div><button class="btn btn-outline" id="contactBtn">Configurar contactos <span>↗</span></button></div>
 </div></section>
-<div id="roomNext" class="room-next" hidden></div>
+
+<div id="parking" hidden></div>
+<div id="roomView" class="roomview" hidden role="dialog" aria-modal="true" aria-label="Espaço do portal"><div class="rv-sheet"><div class="rv-top"><button type="button" class="rv-close" data-close-room>← Voltar ao início</button><button type="button" class="rv-x" data-close-room aria-label="Fechar">×</button></div><div id="roomBar" class="room-bar"></div><div id="roomSlot"></div><div id="roomNext" class="room-next"></div></div></div>
 </main>
 
-<footer><a class="footer-brand" href="#inicio">AE <b>1028</b></a><p>Associação dos Estudantes do Magistério Nº 1028 CNO, Comandante Benedito.</p><small>Portal independente de informação e participação estudantil · <span id="year"></span></small><button type="button" class="link-btn light" id="installBtn" hidden>Instalar a app no telemóvel</button><button type="button" class="link-btn light" data-open-privacy>Privacidade e dados pessoais</button></footer>
+<footer class="site-footer"><div class="foot-in">
+<div class="foot-brand"><img src="logo.png" alt="Logótipo da Associação"><strong>Associação dos Estudantes</strong><p>Magistério Nº 1028 CNO · Comandante Benedito</p><p class="motto">Juntos pelo conhecimento, pela educação e um futuro melhor.</p></div>
+<div><h4>Espaços</h4><a href="#associacao">Quem somos</a><a href="#noticias">Notícias</a><a href="#eventos">Actividades</a><a href="#galeria">Galeria</a></div>
+<div><h4>Estudantes</h4><a href="#conta">Área do estudante</a><a href="#membro">Ser membro</a><a href="#biblioteca">Biblioteca</a><a href="#assistente">Assistente</a></div>
+<div><h4>Contactos</h4><a href="#contactos">Fale connosco</a><button type="button" class="link-btn light" data-open-privacy>Privacidade e dados pessoais</button><button type="button" class="link-btn light" id="installBtn" hidden>Instalar a app no telemóvel</button></div>
+</div><div class="foot-bottom"><span>© <span id="year"></span> Associação dos Estudantes · Magistério Nº 1028 CNO</span><a href="#inicio">↑ Topo</a></div></footer>
 
 <div class="modal" id="suggestionModal" aria-hidden="true"><div class="modal-backdrop" data-close-suggestion></div><div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="suggestionTitle"><button class="modal-close" data-close-suggestion aria-label="Fechar">×</button><p class="eyebrow dark">PARTICIPAÇÃO ESTUDANTIL</p><h2 id="suggestionTitle">Envie a sua mensagem</h2><form id="suggestionForm"><input class="hp" name="website" tabindex="-1" autocomplete="off" aria-hidden="true"><label>Tipo de mensagem<select name="type" required><option value="Sugestão">Sugestão</option><option value="Reclamação">Reclamação</option><option value="Dúvida">Dúvida</option></select></label><label>Nome (opcional)<input name="name" maxlength="100" placeholder="Pode deixar em branco"></label><label>Telefone ou e-mail para resposta (opcional)<input name="contact" maxlength="120" autocomplete="off" placeholder="Sem contacto, não conseguimos responder-lhe"></label><label>Mensagem<textarea name="message" required minlength="5" maxlength="1500" rows="5" placeholder="Explique a situação com respeito e clareza"></textarea></label><button class="btn btn-primary full" type="submit">Enviar mensagem</button><p class="form-status" id="suggestionStatus" aria-live="polite"></p></form></div></div>
 
