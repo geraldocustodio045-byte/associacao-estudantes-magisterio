@@ -276,3 +276,11 @@ body.bio-lock{overflow:hidden}
  .team-grid{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;gap:14px;padding-bottom:14px;scrollbar-width:none}.team-grid::-webkit-scrollbar{display:none}.team-grid>*{flex:0 0 76%;scroll-snap-align:center}
 }
 @media(prefers-reduced-motion:reduce){.hero-media::after{animation:none}.rv{opacity:1;transform:none}}
+
+/* Trabalhos escolares e plano premium */
+.work-status{display:grid;gap:4px;padding:16px 18px;border-radius:18px;background:#f3f0e8;border:1px solid #e6dcc3;margin-bottom:16px}.work-status b{font:800 1rem Manrope,sans-serif;color:var(--navy)}.work-status span,.work-status small{font-size:.85rem;color:var(--muted)}
+.work-status.prem{background:linear-gradient(135deg,var(--navy),var(--blue));border:0}.work-status.prem b{color:var(--gold)}.work-status.prem span,.work-status.prem small{color:#dbe6f3}
+.work-block{padding:16px 18px;border-radius:18px;background:#fff6e5;border:1px solid #f0d9a4;margin-bottom:16px}.work-block p{margin:6px 0 0;font-size:.88rem;color:#5b4a22}
+.premium-box{margin:18px 0;border:1px solid var(--gold);border-radius:18px;padding:14px 18px;background:#fffdf7}.premium-box summary{font:800 .95rem Manrope,sans-serif;color:var(--navy);cursor:pointer}.premium-box ul{padding-left:20px;font-size:.9rem}
+.pay-num{font-size:1.2rem;color:var(--navy);letter-spacing:.04em;user-select:all}
+.work-ok{padding:12px 14px;border-radius:14px;background:#e9f6ee;color:#1e5c3a;font-size:.88rem}.work-h{margin:22px 0 8px;font-size:1rem}

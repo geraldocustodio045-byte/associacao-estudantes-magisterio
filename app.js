@@ -141,6 +141,7 @@ async function refreshAccount(){
 async function countUnread(){const {count}=await sb.from("notifications").select("id",{count:"exact",head:true}).eq("read",false);$("#unread").textContent=count?`(${count})`:"";}
 async function loadStudentTab(t){
   ST.tab=t;$$("#studentTabs .tab-btn").forEach(b=>b.classList.toggle("active",b.dataset.st===t));const box=$("#studentBody"),p=ST.profile;
+  if(t==="trabalho"){workTab(box,p);return;}
   if(t==="pedidos"){const {data,error}=await sb.from("suggestions").select("*").eq("user_id",ST.uid).order("created_at",{ascending:false});
     box.innerHTML=error?`<p class="muted">Erro ao carregar.</p>`:!data.length?`<p class="muted">Ainda não fez nenhum pedido.</p>`:data.map(r=>`<div class="req"><small>${esc(r.protocol||"")} · ${esc(fmt(r.created_at))}</small><b>${esc(r.kind)}</b> <span class="chip">${esc(ST_STATUS[r.status]||r.status)}</span><p>${esc(r.message)}</p>${r.reply?`<p class="reply"><b>Resposta da Direcção:</b> ${esc(r.reply)}</p>`:""}</div>`).join("");}
   if(t==="novo")box.innerHTML=`<form id="newReqForm"><label>Tipo<select name="kind"><option>Sugestão</option><option>Reclamação</option><option>Dúvida</option></select></label><label>Mensagem<textarea name="message" rows="5" required minlength="5" maxlength="1500"></textarea></label><button class="btn btn-primary" type="submit">Enviar pedido</button><p class="form-status" id="newReqStatus" aria-live="polite"></p></form>`;
@@ -324,6 +325,10 @@ const TABS={
   faq_items:{label:"Dúvidas",publish:true,
     form:[["question","Pergunta"],["answer","Resposta","textarea"],["sort_order","Ordem (opcional)","number"]],
     line:r=>`<b>${esc(r.question)}</b><br><small>${esc(r.answer)}</small>`},
+  work_orders:{label:"Trabalhos",status:["recebido","em execução","entregue","cancelado"],
+    line:r=>`<b>${esc(r.theme)}</b> <span class="chip">${r.plan==="premium"?"PREMIUM · 24h":"Grátis · 48h"}</span><br>${esc(r.student_name||"")} · ${esc(r.delivery==="pdf"?"PDF no WhatsApp":"Impresso")}<br>${contactLink(r.phone)}<br><small>${esc(r.details||"")}</small><br><small>Protocolo ${esc(r.protocol)} · entregar até ${esc(r.due_at?new Date(r.due_at).toLocaleString("pt-PT"):"")}</small>`},
+  premium_payments:{label:"Pagamentos",status:["em análise","confirmado","recusado"],
+    line:r=>`<b>PAGAMENTO PREMIUM · ${esc(r.amount)} Kz</b><br>${esc(r.student_name||"")}<br>${contactLink(r.phone)}${r.note?`<br><small>${esc(r.note)}</small>`:""}<br><button type="button" class="btn-sm" data-proof="${esc(r.proof_path)}">Ver comprovativo</button><br><small>Protocolo ${esc(r.protocol)} · ${esc(new Date(r.created_at).toLocaleString("pt-PT"))}${r.paid_until?" · válido até "+esc(fmt(r.paid_until)):""}</small>`},
   documents:{label:"Documentos",publish:true,
     form:[["title","Título"],["description","Descrição"],["file","Ficheiro (PDF, até 10 MB)","file"],["public_url","…ou link público (https://…)","url"]],
     line:r=>`<b>${esc(r.title)}</b><br><small>${esc(r.public_url)}</small>`}
@@ -558,3 +563,56 @@ window.addEventListener("scroll",onScroll,{passive:true});onScroll();
   const seen=new WeakSet(), scan=()=>$$(".team-card,.honor-card,.news-card,.event-card,.book,.g-item,.section-head").forEach(el=>{if(seen.has(el))return;seen.add(el);const r=el.getBoundingClientRect();if(r.top<innerHeight)return;el.classList.add("rv");io.observe(el);});
   scan(); new MutationObserver(scan).observe(document.querySelector("main"),{childList:true,subtree:true});
 })();
+
+
+/* ===== Trabalhos escolares: 3 grátis/mês + plano premium ===== */
+const WORK={price:"3.800,00 Kz",express:"935366319",wa:(CFG.WHATSAPP||"244935366319").replace(/\D/g,""),free:3,prem:10};
+function workWa(msg){return `https://wa.me/${WORK.wa}?text=${encodeURIComponent(msg)}`;}
+async function workTab(box,p){
+  if(p.suspended||p.verified===false){box.innerHTML=`<p class="muted">Só contas verificadas pela Direcção podem pedir trabalhos escolares.</p>`;return;}
+  box.innerHTML=`<p class="muted">A carregar…</p>`;
+  const [o,pg]=await Promise.all([sb.from("work_orders").select("*").eq("user_id",ST.uid).order("created_at",{ascending:false}),sb.from("premium_payments").select("*").eq("user_id",ST.uid).order("created_at",{ascending:false})]);
+  if(o.error||pg.error){box.innerHTML=`<p class="muted">Este serviço ainda não está activo. A Direcção precisa de concluir a configuração.</p>`;return;}
+  const orders=o.data||[],pays=pg.data||[],now=new Date(),m0=new Date(now.getFullYear(),now.getMonth(),1);
+  const prem=pays.find(x=>x.status==="confirmado"&&x.paid_until&&new Date(x.paid_until)>now);
+  const premUsed=prem?orders.filter(x=>x.plan==="premium"&&new Date(x.created_at)>=new Date(prem.confirmed_at)).length:0;
+  const freeUsed=orders.filter(x=>x.plan==="gratis"&&new Date(x.created_at)>=m0).length;
+  const premLeft=prem?Math.max(0,WORK.prem-premUsed):0, freeLeft=Math.max(0,WORK.free-freeUsed);
+  const canOrder=premLeft>0||freeLeft>0, pending=pays.find(x=>x.status==="em análise");
+  let h=`<div class="work-status ${prem?"prem":""}"><b>${prem?"Plano Premium activo":"Plano gratuito"}</b><span>${prem?`Restam ${premLeft} de ${WORK.prem} trabalhos · válido até ${esc(fmt(prem.paid_until))} · entrega em menos de 24 horas`:`Restam ${freeLeft} de ${WORK.free} pedidos este mês · entrega em 48 horas`}</span>${prem&&freeLeft?`<small>Depois dos premium, ainda tem ${freeLeft} pedido(s) gratuito(s) este mês.</small>`:""}</div>`;
+  if(canOrder){
+    h+=`<form id="workForm"><h3>Pedir um trabalho escolar</h3><label>Tema do trabalho<input name="theme" required minlength="3" maxlength="200" placeholder="Ex.: A importância da Educação Moral e Cívica"></label><label>Detalhes e o que quer no trabalho<textarea name="details" rows="5" maxlength="3000" placeholder="Disciplina, classe, número de páginas, o que deve constar, normas do professor…"></textarea></label><label>Como quer receber<select name="delivery"><option value="pdf">PDF no WhatsApp</option><option value="impresso">Impresso</option></select></label><label>WhatsApp para a entrega<input name="phone" required inputmode="tel" maxlength="30" value="${esc(p.phone||"")}"></label><button class="btn btn-primary" type="submit">Enviar pedido</button><p class="form-status" id="workStatus" aria-live="polite"></p></form>`;
+  }else{
+    h+=`<div class="work-block"><b>${prem?"Chegou ao limite do plano premium":"Atingiu o limite de 3 pedidos gratuitos este mês"}</b><p>${prem?"Já usou os "+WORK.prem+" trabalhos do plano premium.":"Os pedidos gratuitos voltam a ficar disponíveis no início do próximo mês."} Se precisa de mais trabalhos agora, adquira o plano premium abaixo: o serviço não está bloqueado, só precisa de ser activado.</p></div>`;
+  }
+  h+=`<details class="premium-box" ${canOrder?"":"open"}><summary>Plano Premium · ${WORK.price} por mês</summary><ul><li>${WORK.prem} trabalhos profissionais durante o mês</li><li>Feitos em menos de 24 horas</li><li>Impresso ou em PDF no WhatsApp, à sua escolha</li></ul>`;
+  if(pending) h+=`<p class="work-ok"><b>Comprovativo recebido.</b> A Direcção está a confirmar o pagamento (${esc(pending.protocol)}). O plano será activado assim que for confirmado.</p>`;
+  else h+=`<p><b>1.</b> Pague <b>${WORK.price}</b> por Express para o número <b class="pay-num">${WORK.express}</b>.</p><form id="proofForm"><p><b>2.</b> Envie aqui o comprovativo (foto ou PDF).</p><label>Comprovativo<input type="file" name="proof" accept="image/*,application/pdf" required></label><label>Nota (opcional)<input name="note" maxlength="200" placeholder="Ex.: nome de quem pagou"></label><button class="btn btn-primary" type="submit">Enviar comprovativo</button><p class="form-status" id="proofStatus" aria-live="polite"></p></form>`;
+  h+=`</details>`;
+  if(orders.length) h+=`<h3 class="work-h">Os meus trabalhos</h3>`+orders.map(r=>`<div class="req"><small>${esc(r.protocol)} · ${esc(fmt(r.created_at))}</small><b>${esc(r.theme)}</b> <span class="chip">${esc(r.status)}</span> <span class="chip">${r.plan==="premium"?"Premium":"Grátis"}</span>${r.reply?`<p class="reply"><b>Direcção:</b> ${esc(r.reply)}</p>`:""}</div>`).join("");
+  if(pays.length) h+=`<h3 class="work-h">Os meus pagamentos</h3>`+pays.map(r=>`<div class="req"><small>${esc(r.protocol)} · ${esc(fmt(r.created_at))}</small><b>Plano premium</b> <span class="chip">${esc(r.status)}</span></div>`).join("");
+  box.innerHTML=h;
+}
+$("#studentBody").addEventListener("submit",async e=>{
+  const f=e.target; if(f.id!=="workForm"&&f.id!=="proofForm") return;
+  const d=Object.fromEntries(new FormData(f)), prof=ST.profile||{}, btn=f.querySelector("button[type=submit]"); btn.disabled=true;
+  if(f.id==="workForm"){const st=$("#workStatus");st.textContent="A enviar…";
+    const {data,error}=await sb.from("work_orders").insert({student_name:prof.full_name||"",phone:d.phone.trim(),theme:d.theme.trim(),details:(d.details||"").trim(),delivery:d.delivery}).select("protocol,plan").single();
+    btn.disabled=false;
+    if(error){const m=error.message||"";st.textContent=/limite_gratis/.test(m)?"Atingiu o limite de pedidos gratuitos deste mês.":/conta_nao_verificada/.test(m)?"A sua conta ainda não foi verificada.":"Não foi possível enviar. Tente mais tarde.";if(/limite_gratis/.test(m))workTab($("#studentBody"),prof);return;}
+    toast(`Pedido enviado (${data.protocol}). Entrega em ${data.plan==="premium"?"menos de 24":"48"} horas.`);workTab($("#studentBody"),prof);return;}
+  const file=f.proof.files[0],st=$("#proofStatus");
+  if(!file){btn.disabled=false;return;} if(file.size>8*1024*1024){st.textContent="O ficheiro tem mais de 8 MB.";btn.disabled=false;return;}
+  st.textContent="A enviar comprovativo…";
+  const path=`${ST.uid}/${Date.now()}-${file.name.replace(/[^\w.\-]+/g,"_")}`;
+  const up=await sb.storage.from("comprovativos").upload(path,file,{contentType:file.type});
+  if(up.error){st.textContent="Não foi possível enviar o ficheiro.";btn.disabled=false;return;}
+  const {data,error}=await sb.from("premium_payments").insert({student_name:prof.full_name||"",phone:prof.phone||"",note:(d.note||"").trim(),proof_path:path}).select("protocol").single();
+  btn.disabled=false; if(error){st.textContent="Não foi possível registar o pagamento.";return;}
+  toast("Comprovativo enviado. A Direcção vai confirmar.");
+  await workTab($("#studentBody"),prof);
+  $("#studentBody").insertAdjacentHTML("afterbegin",`<p class="work-ok"><a class="btn btn-primary" href="${workWa(`Olá! Paguei o plano premium (${data.protocol}) de ${WORK.price}. Nome: ${prof.full_name||""}. Já enviei o comprovativo no site.`)}" target="_blank" rel="noopener">Avisar a Direcção no WhatsApp</a></p>`);
+});
+document.addEventListener("click",async e=>{const b=e.target.closest("[data-proof]");if(!b)return;
+  const {data,error}=await sb.storage.from("comprovativos").createSignedUrl(b.dataset.proof,300);
+  if(error)toast("Não foi possível abrir o comprovativo.");else window.open(data.signedUrl,"_blank","noopener");});
