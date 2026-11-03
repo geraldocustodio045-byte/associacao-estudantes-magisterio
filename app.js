@@ -20,6 +20,8 @@ const ROOMS={
   noticias:{g:"i",t:"Notícias e comunicados",d:"Avisos e informações oficiais",ids:["noticias"]},
   eventos:{g:"i",t:"Actividades e eventos",d:"O que vem aí",ids:["eventos"]},
   galeria:{g:"i",t:"Galeria",d:"Fotografias das actividades",ids:["galeria"]},
+  conta:{g:"e",t:"Área do estudante",d:"A sua conta, pedidos e notificações",ids:["conta"]},
+  assistente:{g:"e",t:"Assistente",d:"Pesquise nos serviços e regulamentos",ids:["assistente"]},
   membro:{g:"e",t:"Ser membro",d:"Peça a sua inscrição",ids:["membro"]},
   sugestoes:{g:"e",t:"Sugestões e reclamações",d:"A sua opinião conta",ids:["sugestoes"]},
   biblioteca:{g:"e",t:"Biblioteca",d:"Livros e materiais didáticos",ids:["biblioteca"]},
@@ -85,7 +87,7 @@ async function submitPublic(table,row,form,statusEl,okMsg){
   const btn=$("button[type=submit]",form); btn.disabled=true; statusEl.textContent="A enviar…";
   const {error}=await sb.from(table).insert(row);
   btn.disabled=false;
-  if(error){statusEl.textContent="Não foi possível enviar. Verifique a ligação e tente de novo.";return;}
+  if(error){statusEl.textContent=/conta_nao_verificada/.test(error.message||"")?"Tem sessão iniciada numa conta ainda por verificar. Saia da conta ou aguarde a verificação.":"Não foi possível enviar. Verifique a ligação e tente de novo.";return;}
   try{localStorage.setItem("ae_last",String(Date.now()));}catch(e){}
   form.reset(); statusEl.textContent=okMsg; toast(okMsg);
 }
@@ -98,6 +100,74 @@ $("#suggestionForm").addEventListener("submit",e=>{
   e.preventDefault(); const f=e.currentTarget, d=Object.fromEntries(new FormData(f));
   submitPublic("suggestions",{kind:d.type,sender_name:(d.name||"").trim(),message:d.message.trim(),...((d.contact||"").trim()?{contact:d.contact.trim()}:{})},f,$("#suggestionStatus"),"Mensagem enviada à Direcção. Obrigado!");
 });
+
+/* Conta do estudante e assistente */
+let ANN=[],DOCS=[],FAQ=[];
+const ST={tab:"pedidos",uid:null,profile:{}};
+const ST_STATUS={"recebida":"Recebido","em análise":"Em análise","respondida":"Respondido","arquivada":"Concluído"};
+function setAuthTab(t){$$("[data-auth]").forEach(b=>b.classList.toggle("active",b.dataset.auth===t));$("#loginForm").hidden=t!=="login";$("#registerForm").hidden=t!=="register";}
+$$("[data-auth]").forEach(b=>b.addEventListener("click",()=>setAuthTab(b.dataset.auth)));
+$("#loginForm").addEventListener("submit",async e=>{e.preventDefault();if(!sb)return;const f=e.currentTarget,d=Object.fromEntries(new FormData(f)),st=$("#loginStatus");
+  st.textContent="A entrar…";const {error}=await sb.auth.signInWithPassword({email:d.email.trim(),password:d.password});f.password.value="";
+  st.textContent=error?"E-mail ou palavra-passe incorrectos.":"";if(!error)refreshAccount();});
+$("#registerForm").addEventListener("submit",async e=>{e.preventDefault();if(!sb)return;const f=e.currentTarget,d=Object.fromEntries(new FormData(f)),st=$("#registerStatus");
+  if(d.website)return;
+  if(d.password.length<8){st.textContent="A palavra-passe deve ter pelo menos 8 caracteres.";return;}
+  if(d.password!==d.password2){st.textContent="As palavras-passe não coincidem.";return;}
+  if(!d.consent){st.textContent="É necessário aceitar o tratamento dos dados.";return;}
+  st.textContent="A criar conta…";
+  const meta={full_name:d.full_name.trim(),course:d.course,grade:d.grade.trim(),class_group:(d.class_group||"").trim(),phone:(d.phone||"").trim()};
+  const {data,error}=await sb.auth.signUp({email:d.email.trim(),password:d.password,options:{data:meta}});
+  if(error){st.textContent=/registered|exists/i.test(error.message)?"Este e-mail já tem conta.":"Não foi possível criar a conta. Verifique os dados.";return;}
+  f.reset();
+  if(data.session){await sb.from("profiles").upsert({id:data.user.id,...meta});st.textContent="";refreshAccount();}
+  else st.textContent="Conta criada. Se for pedida confirmação, verifique o seu e-mail e depois entre.";});
+async function refreshAccount(){
+  if(!sb)return;const {data:{session}}=await sb.auth.getSession();
+  $("#authBox").hidden=!!session;$("#studentBox").hidden=!session;
+  if(!session){ST.uid=null;return;}
+  ST.uid=session.user.id;
+  const {data:p}=await sb.from("profiles").select("*").eq("id",ST.uid).maybeSingle();ST.profile=p||{};
+  $("#studentHello").textContent="Olá, "+(ST.profile.full_name||session.user.email)+(ST.profile.verified&&!ST.profile.suspended?" ✓ Verificado":"");
+  const bn=$("#acctBanner"),pf=ST.profile;
+  bn.hidden=!(pf.suspended||pf.verified===false);
+  bn.textContent=pf.suspended?"A sua conta está suspensa. Contacte a Direcção.":"A sua conta aguarda verificação da Direcção. Até lá pode consultar o portal, mas ainda não pode enviar pedidos.";
+  loadStudentTab(ST.tab);countUnread();
+}
+async function countUnread(){const {count}=await sb.from("notifications").select("id",{count:"exact",head:true}).eq("read",false);$("#unread").textContent=count?`(${count})`:"";}
+async function loadStudentTab(t){
+  ST.tab=t;$$("#studentTabs .tab-btn").forEach(b=>b.classList.toggle("active",b.dataset.st===t));const box=$("#studentBody"),p=ST.profile;
+  if(t==="pedidos"){const {data,error}=await sb.from("suggestions").select("*").eq("user_id",ST.uid).order("created_at",{ascending:false});
+    box.innerHTML=error?`<p class="muted">Erro ao carregar.</p>`:!data.length?`<p class="muted">Ainda não fez nenhum pedido.</p>`:data.map(r=>`<div class="req"><small>${esc(r.protocol||"")} · ${esc(fmt(r.created_at))}</small><b>${esc(r.kind)}</b> <span class="chip">${esc(ST_STATUS[r.status]||r.status)}</span><p>${esc(r.message)}</p>${r.reply?`<p class="reply"><b>Resposta da Direcção:</b> ${esc(r.reply)}</p>`:""}</div>`).join("");}
+  if(t==="novo")box.innerHTML=`<form id="newReqForm"><label>Tipo<select name="kind"><option>Sugestão</option><option>Reclamação</option><option>Dúvida</option></select></label><label>Mensagem<textarea name="message" rows="5" required minlength="5" maxlength="1500"></textarea></label><button class="btn btn-primary" type="submit">Enviar pedido</button><p class="form-status" id="newReqStatus" aria-live="polite"></p></form>`;
+  if(t==="novo"&&(p.suspended||p.verified===false))box.innerHTML=`<p class="muted">Só contas verificadas pela Direcção podem enviar pedidos.</p>`;
+  if(t==="avisos"){const {data}=await sb.from("notifications").select("*").order("created_at",{ascending:false}).limit(50);
+    box.innerHTML=!data||!data.length?`<p class="muted">Sem notificações.</p>`:data.map(n=>`<div class="req${n.read?"":" new"}"><small>${esc(fmt(n.created_at))}</small><b>${esc(n.title)}</b><p>${esc(n.body)}</p></div>`).join("");
+    if(data&&data.some(n=>!n.read)){await sb.from("notifications").update({read:true}).eq("read",false);countUnread();}}
+  if(t==="perfil")box.innerHTML=`<form id="profileForm"><label>Nome completo<input name="full_name" required maxlength="100" value="${esc(p.full_name||"")}"></label><label>Curso<input name="course" maxlength="80" value="${esc(p.course||"")}"></label><label>Classe<input name="grade" maxlength="40" value="${esc(p.grade||"")}"></label><label>Turma<input name="class_group" maxlength="20" value="${esc(p.class_group||"")}"></label><label>Telefone<input name="phone" maxlength="30" value="${esc(p.phone||"")}"></label><button class="btn btn-primary" type="submit">Guardar perfil</button><p class="form-status" id="profileStatus"></p></form><form id="pwForm"><h3>Alterar palavra-passe</h3><label>Nova palavra-passe<input type="password" name="pw" minlength="8" required autocomplete="new-password"></label><label>Confirmar<input type="password" name="pw2" minlength="8" required autocomplete="new-password"></label><button class="btn btn-primary" type="submit">Alterar</button><p class="form-status" id="pwStatus"></p></form>`;
+}
+$("#studentTabs").addEventListener("click",e=>{const b=e.target.closest("[data-st]");if(b)loadStudentTab(b.dataset.st);});
+$("#logoutBtn").addEventListener("click",async()=>{await sb.auth.signOut();refreshAccount();});
+$("#studentBody").addEventListener("submit",async e=>{e.preventDefault();const f=e.target,d=Object.fromEntries(new FormData(f));
+  if(f.id==="newReqForm"){const st=$("#newReqStatus");st.textContent="A enviar…";
+    const {data,error}=await sb.from("suggestions").insert({kind:d.kind,sender_name:ST.profile.full_name||"",message:d.message.trim()}).select("protocol").single();
+    if(error){st.textContent=/conta_nao_verificada/.test(error.message||"")?"A sua conta ainda não foi verificada pela Direcção.":"Não foi possível enviar. Tente mais tarde.";return;}
+    toast("Pedido enviado. Protocolo "+(data&&data.protocol||""));loadStudentTab("pedidos");}
+  if(f.id==="profileForm"){const {error}=await sb.from("profiles").update({full_name:d.full_name.trim(),course:d.course.trim(),grade:d.grade.trim(),class_group:d.class_group.trim(),phone:d.phone.trim()}).eq("id",ST.uid);
+    $("#profileStatus").textContent=error?"Erro ao guardar.":"Perfil guardado.";if(!error){Object.assign(ST.profile,d);$("#studentHello").textContent="Olá, "+d.full_name.trim();}}
+  if(f.id==="pwForm"){const st=$("#pwStatus");if(d.pw!==d.pw2){st.textContent="As palavras-passe não coincidem.";return;}
+    const {error}=await sb.auth.updateUser({password:d.pw});st.textContent=error?"Não foi possível alterar.":"Palavra-passe alterada.";f.reset();}
+});
+function assistSearch(q){
+  const w=norm(q).split(/[^a-z0-9]+/).filter(x=>x.length>2);if(!w.length)return [];
+  const sc=t=>{t=norm(t);return w.reduce((n,x)=>n+(t.includes(x)?1:0),0);};
+  return [...FAQ.map(r=>({k:"faq",s:sc(r.question)*2+sc(r.answer),r})),...LIB.map(r=>({k:"lib",s:sc([r.title,r.author,r.subject,r.description].join(" ")),r})),
+    ...DOCS.map(r=>({k:"doc",s:sc((r.title||"")+" "+(r.description||"")),r})),...ANN.map(r=>({k:"ann",s:sc((r.title||"")+" "+(r.summary||"")),r}))]
+    .filter(x=>x.s>0).sort((a,b)=>b.s-a.s).slice(0,6);
+}
+$("#askForm").addEventListener("submit",e=>{e.preventDefault();const res=assistSearch($("#askInput").value),out=$("#askOut");
+  out.innerHTML=res.length?res.map(x=>x.k==="faq"?`<div class="req"><b>${esc(x.r.question)}</b><p>${esc(x.r.answer)}</p></div>`:x.k==="ann"?`<div class="req"><b>${esc(x.r.title)}</b><p>${esc(x.r.summary)}</p><a href="#noticias">Ver em Notícias</a></div>`:`<div class="req"><b>${esc(x.r.title)}</b><p>${esc(x.k==="lib"?"Biblioteca":"Documento")}</p><a href="${esc(safeUrl(x.r.file_url||x.r.public_url))}" target="_blank" rel="noopener">Abrir</a></div>`).join(""):`<p class="muted">Não encontrei nada sobre isso. <button type="button" class="link-btn" data-ask>Envie a sua dúvida à Direcção</button></p>`;
+  $$("[data-ask]",out).forEach(b=>b.addEventListener("click",()=>openModal("#suggestionModal")));});
 
 /* Galeria por actividades */
 let GAL=[],galAlbum=null;
@@ -168,11 +238,12 @@ async function loadPublic(){
     sb.from("honor_roll").select("*").eq("published",true).eq("consent",true).order("sort_order",{ascending:true}).order("created_at",{ascending:true}),
     sb.from("faq_items").select("*").eq("published",true).order("sort_order",{ascending:true}).order("created_at",{ascending:true})]);
   LIB=l.data||[]; renderLib();
-  renderHonor(h.data||[]); renderFaq(f.data||[]);
+  FAQ=f.data||[]; renderHonor(h.data||[]); renderFaq(f.data||[]);
   if(m.data?.length){
     $("#teamGrid").innerHTML=m.data.map(r=>`<article class="team-card">${r.photo_url?`<img src="${esc(safeUrl(r.photo_url))}" alt="${esc(r.full_name)}" loading="lazy">`:`<div class="team-ph" aria-hidden="true">${esc(r.full_name.trim().split(/\s+/).map(w=>w[0]).slice(0,2).join("").toUpperCase())}</div>`}<h3>${esc(r.full_name)}</h3><p class="role">${esc(r.role)}</p>${r.bio?`<p class="bio">${esc(r.bio)}</p>`:""}</article>`).join("");
   }
   GAL=g.data||[]; renderGallery();
+  ANN=a.data||[]; DOCS=d.data||[];
   const col=["blue","gold","green"];
   if(a.data?.length){
     $("#newsGrid").innerHTML=a.data.map((r,i)=>`<article class="news-card${i===0?" featured":""}"><div class="news-visual visual-${col[i%3]}"><span>COMUNICADO</span><b>AE</b></div><div class="card-body"><p class="meta">${esc(fmt(r.published_at||r.created_at))}</p><h3>${esc(r.title)}</h3><p>${esc(r.summary)}</p></div></article>`).join("");
@@ -200,7 +271,10 @@ const TABS={
   member_requests:{label:"Inscrições",status:["pendente","aprovado","recusado"],
     line:r=>`<b>${esc(r.full_name)}</b> · ${esc(r.course)}, ${esc(r.grade)}<br>${contactLink(r.phone)}${r.email?"<br>"+contactLink(r.email):""}${r.motivation?`<br><small>${esc(r.motivation)}</small>`:""}`},
   suggestions:{label:"Mensagens",status:["recebida","em análise","respondida","arquivada"],
-    line:r=>`<b>${esc(r.kind)}</b>${r.sender_name?" · "+esc(r.sender_name):""}<br>${esc(r.message)}<br>${contactLink(r.contact)}`},
+    line:r=>`<b>${esc(r.kind)}</b>${r.sender_name?" · "+esc(r.sender_name):""}<br>${esc(r.message)}<br>${contactLink(r.contact)}${r.protocol?`<br><small>Protocolo ${esc(r.protocol)}</small>`:""}${r.reply?`<br><small>Resposta: ${esc(r.reply)}</small>`:""}`},
+  profiles:{label:"Estudantes",noDelete:true,search:true,
+    line:r=>`<b>${esc(r.full_name||"(sem nome)")}</b> <span class="chip">${r.suspended?"Suspensa":r.verified?"Verificado":"Por verificar"}</span><br><small>${esc([r.course,r.grade,r.class_group&&"Turma "+r.class_group].filter(Boolean).join(" · "))}</small>${r.phone?`<br>${contactLink(r.phone)}`:""}`,
+    actions:r=>r.suspended?`<button type="button" class="btn-sm" data-vs="restore" data-id="${r.id}" data-v="${!!r.verified}">Reactivar</button>`:`${r.verified?"":`<button type="button" class="btn-sm" data-vs="verify" data-id="${r.id}" data-v="false">Verificar</button>`}<button type="button" class="btn-sm danger" data-vs="suspend" data-id="${r.id}" data-v="${!!r.verified}">Suspender</button>`},
   announcements:{label:"Comunicados",publish:true,
     form:[["title","Título"],["summary","Texto do comunicado","textarea"]],line:r=>`<b>${esc(r.title)}</b><br><small>${esc(r.summary)}</small>`},
   events:{label:"Actividades",publish:true,
@@ -233,7 +307,7 @@ async function checkStaff(){
   const {data:{session}}=await sb.auth.getSession();
   if(!session){show("#adminLogin",true);show("#adminPanel",false);return;}
   const {data}=await sb.from("staff_roles").select("role").eq("user_id",session.user.id).maybeSingle();
-  if(!data){await sb.auth.signOut();$("#adminStatus").textContent="Esta conta não tem permissão de Direcção.";show("#adminLogin",true);show("#adminPanel",false);return;}
+  if(!data){$("#adminStatus").textContent="Esta conta não tem permissão de Direcção.";show("#adminLogin",true);show("#adminPanel",false);return;}
   show("#adminLogin",false);show("#adminPanel",true);
   $("#adminTabs").innerHTML=Object.entries(TABS).map(([k,t])=>`<button type="button" class="tab-btn" data-tab="${k}">${t.label}</button>`).join("");
   loadTab(currentTab);
@@ -253,13 +327,14 @@ async function loadTab(name){
   $$("#adminTabs .tab-btn").forEach(b=>b.classList.toggle("active",b.dataset.tab===name));
   const {data,error}=await sb.from(name).select("*").order("created_at",{ascending:false}).limit(300);
   let html=`<p><button type="button" class="btn-sm" data-export>Exportar tudo em CSV (cópia de segurança)</button></p>`;
+  if(t.search)html+=`<p><input id="adminFind" class="admin-find" placeholder="Pesquisar por nome, curso ou turma…" aria-label="Pesquisar"></p><p class="muted">${(data||[]).filter(r=>!r.verified&&!r.suspended).length} por verificar</p>`;
   if(t.form) html+=`<form class="admin-form" data-add="${name}">${t.form.map(([k,l,ty,opts])=>ty==="select"?`<label>${l}<select name="${k}">${opts.map(o=>`<option>${esc(o)}</option>`).join("")}</select></label>`:ty==="textarea"?`<label>${l}<textarea name="${k}" rows="3" ${k==="bio"||/opcional/.test(l)?"":"required"}></textarea></label>`:`<label>${l}<input name="${k}" type="${ty||"text"}"${k==="album"?' list="albumList" maxlength="120"':""}${ty==="number"?' step="any"':""} ${(k==="title"&&name!=="library_resources")||k==="full_name"||k==="role"||k==="question"?"required":""}${ty==="file"&&(name==="gallery_images"||name==="library_resources")?" multiple":""}${ty==="file"?' accept="'+(name==="documents"||name==="library_resources"?".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx":"image/*")+'"':""}></label>`).join("")}<button class="btn btn-primary" type="submit">Adicionar (fica oculto até publicar)</button>${name==="gallery_images"?`<datalist id="albumList">${[...new Set((data||[]).map(r=>r.album).filter(Boolean))].map(a=>`<option value="${esc(a)}">`).join("")}</datalist>`:""}</form>`;
   if(error) html+=`<p class="form-status">Erro ao carregar dados.</p>`;
   else if(!data.length) html+=`<p class="muted">Sem registos.</p>`;
   else html+=data.map(r=>`<div class="admin-row"><div class="admin-info">${t.line(r)}<br><small class="dim">${esc(fmt(r.created_at))}</small></div><div class="admin-actions">${
     t.status?`<select data-status="${r.id}">${t.status.map(s=>`<option${s===r.status?" selected":""}>${s}</option>`).join("")}</select>`:""}${
     t.publish?`<button type="button" class="btn-sm" data-pub="${r.id}" data-on="${r.published}">${r.published?"Ocultar":"Publicar"}</button>`:""
-    }${name==="gallery_images"?`<button type="button" class="btn-sm" data-move="${r.id}" data-album="${esc(r.album||"")}">Mudar actividade</button>`:""}<button type="button" class="btn-sm danger" data-del="${r.id}">Apagar</button></div></div>`).join("");
+    }${name==="suggestions"?`<button type="button" class="btn-sm" data-reply="${r.id}">Responder</button>`:""}${name==="gallery_images"?`<button type="button" class="btn-sm" data-move="${r.id}" data-album="${esc(r.album||"")}">Mudar actividade</button>`:""}${t.actions?t.actions(r):""}${t.noDelete?"":`<button type="button" class="btn-sm danger" data-del="${r.id}">Apagar</button>`}</div></div>`).join("");
   $("#adminBody").innerHTML=html;
 }
 $("#adminTabs").addEventListener("click",e=>{const b=e.target.closest("[data-tab]");if(b)loadTab(b.dataset.tab);});
@@ -287,6 +362,14 @@ async function exportTab(){
 }
 $("#adminBody").addEventListener("click",async e=>{
   if(e.target.closest("[data-export]")){await exportTab();return;}
+  const vs=e.target.closest("[data-vs]");
+  if(vs){const v=vs.dataset.v==="true",a=vs.dataset.vs;
+    const {error}=await sb.rpc("set_student_status",{p_user:vs.dataset.id,p_verified:a==="verify"||v,p_suspended:a==="suspend"});
+    toast(error?"Erro ao actualizar a conta.":"Estado da conta actualizado.");loadTab(currentTab);return;}
+  const rp=e.target.closest("[data-reply]");
+  if(rp){const t=prompt("Resposta ao estudante:");if(!t||!t.trim())return;
+    const {error}=await sb.from("suggestions").update({reply:t.trim().slice(0,2000),status:"respondida",replied_at:new Date().toISOString()}).eq("id",rp.dataset.reply);
+    toast(error?"Erro ao responder.":"Resposta guardada. O estudante será notificado.");loadTab(currentTab);return;}
   const mv=e.target.closest("[data-move]");
   if(mv){const a=prompt("Nome da actividade (deixe vazio para tirar):",mv.dataset.album);if(a===null)return;
     const {error}=await sb.from("gallery_images").update({album:a.trim().slice(0,120)}).eq("id",mv.dataset.move);
@@ -397,3 +480,7 @@ if("serviceWorker" in navigator) window.addEventListener("load",()=>navigator.se
 $$(".nav-gbtn").forEach(b=>b.addEventListener("click",()=>{const g=b.parentElement,o=g.classList.contains("open");$$(".nav-group").forEach(x=>x.classList.remove("open"));if(!o)g.classList.add("open");}));
 $$("#mainNav a").forEach(a=>a.addEventListener("click",()=>$$(".nav-group").forEach(x=>x.classList.remove("open"))));
 document.addEventListener("click",e=>{if(!e.target.closest(".nav-group"))$$(".nav-group").forEach(x=>x.classList.remove("open"));});
+
+refreshAccount();
+
+$("#adminBody").addEventListener("input",e=>{if(e.target.id!=="adminFind")return;const q=norm(e.target.value);$$(".admin-row",$("#adminBody")).forEach(r=>{r.hidden=!!q&&!norm(r.textContent).includes(q);});});

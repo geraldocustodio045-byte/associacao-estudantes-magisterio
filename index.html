@@ -32,7 +32,7 @@
     <a href="#inicio">Início</a>
     <div class="nav-group"><button class="nav-gbtn" type="button">A Associação</button><div class="nav-sub"><a href="#associacao">Quem somos</a><a href="#executivo">Executivo</a><a id="navQuadros" href="#honra" hidden>Quadros de honra</a></div></div>
     <div class="nav-group"><button class="nav-gbtn" type="button">Informação</button><div class="nav-sub"><a href="#noticias">Notícias</a><a href="#eventos">Actividades</a><a href="#galeria">Galeria</a></div></div>
-    <div class="nav-group"><button class="nav-gbtn" type="button">Estudantes</button><div class="nav-sub"><a href="#membro">Ser membro</a><a href="#biblioteca">Biblioteca</a><a href="#documentos">Documentos</a><a id="navDuvidas" href="#duvidas" hidden>Dúvidas</a></div></div>
+    <div class="nav-group"><button class="nav-gbtn" type="button">Estudantes</button><div class="nav-sub"><a href="#conta">Área do estudante</a><a href="#assistente">Assistente</a><a href="#membro">Ser membro</a><a href="#biblioteca">Biblioteca</a><a href="#documentos">Documentos</a><a id="navDuvidas" href="#duvidas" hidden>Dúvidas</a></div></div>
     <a href="#contactos">Contactos</a>
     <button class="nav-login" data-open-admin>Área da Direcção</button>
   </nav>
@@ -90,6 +90,27 @@
 <section class="section" id="honra" hidden><div class="section-head"><div><p class="eyebrow dark">EXCELÊNCIA</p><h2>Quadro de Honra</h2><p class="muted">Alunos que terminaram com as melhores notas.</p></div></div><div id="honraGrid" class="team-grid"></div></section>
 
 <section class="section" id="merito" hidden><div class="section-head"><div><p class="eyebrow dark">RECONHECIMENTO</p><h2>Quadro de Mérito</h2><p class="muted">Alunos que se distinguiram pelo esforço, comportamento e dedicação.</p></div></div><div id="meritoGrid" class="team-grid"></div></section>
+
+<section class="section" id="conta"><div class="acct">
+<div id="authBox"><div class="tabs"><button type="button" class="tab-btn active" data-auth="login">Entrar</button><button type="button" class="tab-btn" data-auth="register">Criar conta</button></div>
+<form id="loginForm"><label>E-mail<input type="email" name="email" autocomplete="username" required></label><label>Palavra-passe<input type="password" name="password" autocomplete="current-password" required></label><button class="btn btn-primary" type="submit">Entrar</button><p class="form-status" id="loginStatus" aria-live="polite"></p></form>
+<form id="registerForm" hidden><input class="hp" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
+<label>Nome completo<input name="full_name" required maxlength="100" autocomplete="name"></label>
+<label>E-mail<input type="email" name="email" required maxlength="120" autocomplete="email"></label>
+<label>Curso<select name="course" required><option value="">Escolha…</option><option>Língua Portuguesa e Educação Moral e Cívica</option><option>Biologia e Química</option><option>Matemática e Física</option><option>Geografia e História</option><option>Ensino Primário</option></select></label>
+<label>Classe<input name="grade" required maxlength="40" placeholder="ex.: 10.ª classe"></label>
+<label>Turma<input name="class_group" maxlength="20" placeholder="ex.: B"></label>
+<label>Telefone (opcional)<input name="phone" inputmode="tel" maxlength="30" autocomplete="tel"></label>
+<label>Palavra-passe (mínimo 8 caracteres)<input type="password" name="password" required minlength="8" autocomplete="new-password"></label>
+<label>Confirmar palavra-passe<input type="password" name="password2" required minlength="8" autocomplete="new-password"></label>
+<label class="consent"><input type="checkbox" name="consent"> Li e aceito o tratamento dos meus dados para gerir a minha conta e os meus pedidos.</label><button type="button" class="link-btn" data-open-privacy>Ver aviso de privacidade</button>
+<button class="btn btn-primary" type="submit">Criar conta</button><p class="form-status" id="registerStatus" aria-live="polite"></p></form></div>
+<div id="studentBox" hidden><div class="acct-head"><strong id="studentHello"></strong><button type="button" class="btn-sm" id="logoutBtn">Sair</button></div><p class="notice" id="acctBanner" hidden></p>
+<div class="tabs" id="studentTabs"><button type="button" class="tab-btn active" data-st="pedidos">Os meus pedidos</button><button type="button" class="tab-btn" data-st="novo">Novo pedido</button><button type="button" class="tab-btn" data-st="avisos">Notificações <span id="unread"></span></button><button type="button" class="tab-btn" data-st="perfil">Perfil</button></div>
+<div id="studentBody"></div></div></div></section>
+
+<section class="section" id="assistente"><div class="acct"><p class="muted">Pesquisa nos conteúdos publicados no portal: perguntas frequentes, biblioteca, documentos e comunicados. Não é inteligência artificial.</p>
+<form id="askForm" class="ask"><input id="askInput" maxlength="200" placeholder="Ex.: como apresento uma reclamação?" aria-label="A sua pergunta" required><button class="btn btn-primary" type="submit">Pesquisar</button></form><div id="askOut"></div></div></section>
 
 <section class="section split-section" id="membro">
   <div class="member-copy"><p class="eyebrow dark">FAÇA PARTE</p><h2>A Associação também é sua.</h2><p class="muted">Se pretendes participar activamente na vida estudantil, preenche o formulário. A inscrição só será considerada oficial depois de validada pela Direcção.</p>
