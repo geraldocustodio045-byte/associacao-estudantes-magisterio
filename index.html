@@ -42,7 +42,7 @@
 <main id="conteudo">
 
 <section class="vhero" id="inicio" style="--ov:.6">
-  <div class="hero-media" aria-hidden="true"><img class="hero-poster" src="hero-poster.jpg" alt=""><video id="heroVideo" muted loop playsinline preload="none" poster="hero-poster.jpg" data-mp4="hero.mp4" data-webm="hero.webm"></video></div>
+  <div class="hero-media" aria-hidden="true"><img class="hero-poster" src="hero-poster.jpg" alt=""><canvas id="heroFx"></canvas><video id="heroVideo" muted loop playsinline preload="none" poster="hero-poster.jpg" data-mp4="hero.mp4" data-webm="hero.webm"></video></div>
   <div class="hero-overlay"></div>
   <div class="vh-in">
     <div class="vh-brand"><img class="vh-logo" src="logo.png" alt="Logótipo da Associação dos Estudantes"><p class="vh-name">Associação dos Estudantes<br>Magistério Nº 1028 CNO · Comandante Benedito</p></div>
@@ -53,6 +53,8 @@
   <a class="scroll-cue" href="#executivoHome" aria-label="Descer">↓</a>
 </section>
 <section class="home-exec" id="executivoHome" data-lobby><div class="he-in"><div class="he-head"><p class="eyebrow dark">LIDERANÇA</p><h2>Direcção da Associação</h2><p class="muted">Conheça quem representa os estudantes.</p></div><div id="execGrid" class="team-grid"><p class="muted">Os membros do executivo serão apresentados aqui.</p></div></div></section>
+<section class="home-stats" id="homeStats" data-lobby hidden><div class="he-in"><div id="statsGrid" class="stats"></div></div></section>
+<section class="home-news" id="homeNews" data-lobby hidden><div class="he-in"><div class="hn-cols"><div><h3 id="hnNewsTitle">Últimas notícias</h3><div id="hnNews" class="hn-list"></div><a class="hn-more" href="#noticias">Ver todas as notícias →</a></div><div><h3 id="hnEvTitle">Próximas actividades</h3><div id="hnEvents" class="hn-list"></div><a class="hn-more" href="#eventos">Ver todas as actividades →</a></div></div></div></section>
 <section class="quick-strip" data-lobby aria-label="Princípios da associação">
   <div><span class="quick-icon">◎</span><strong>Representação</strong><small>Dar voz aos estudantes</small></div>
   <div><span class="quick-icon">◇</span><strong>Transparência</strong><small>Informação acessível</small></div>
@@ -93,21 +95,21 @@
 <section class="section" id="merito" hidden><div class="section-head"><div><p class="eyebrow dark">RECONHECIMENTO</p><h2>Quadro de Mérito</h2><p class="muted">Alunos que se distinguiram pelo esforço, comportamento e dedicação.</p></div></div><div id="meritoGrid" class="team-grid"></div></section>
 
 <section class="section" id="conta"><div class="acct">
-<div id="authBox"><div class="tabs"><button type="button" class="tab-btn active" data-auth="login">Entrar</button><button type="button" class="tab-btn" data-auth="register">Criar conta</button></div>
-<form id="loginForm"><label>E-mail<input type="email" name="email" autocomplete="username" required></label><label>Palavra-passe<input type="password" name="password" autocomplete="current-password" required></label><button class="btn btn-primary" type="submit">Entrar</button><p class="form-status" id="loginStatus" aria-live="polite"></p></form>
-<form id="registerForm" hidden><input class="hp" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
+<div id="authBox"><form id="loginForm"><h3 class="form-title">Entrar na sua conta</h3><label>E-mail<input type="email" name="email" autocomplete="username" required></label><label>Palavra-passe<input type="password" name="password" autocomplete="current-password" required></label><button class="btn btn-primary" type="submit">Entrar</button><p class="switch"><button type="button" class="link-btn" data-auth="reset">Esqueceu a sua senha?</button></p><p class="form-status" id="loginStatus" aria-live="polite"></p><p class="switch">Ainda não tem conta? <button type="button" class="link-btn" data-auth="register">Criar conta</button></p></form>
+<form id="resetForm" hidden><h3 class="form-title">Recuperar palavra-passe</h3><p class="muted">Indique o e-mail da sua conta. Enviamos um link para definir uma nova palavra-passe.</p><label>E-mail<input type="email" name="email" required autocomplete="email"></label><button class="btn btn-primary" type="submit">Enviar link</button><p class="form-status" id="resetStatus" aria-live="polite"></p><p class="switch"><button type="button" class="link-btn" data-auth="login">Voltar a entrar</button></p></form>
+<form id="registerForm" hidden><h3 class="form-title">Criar conta de estudante</h3><p class="muted">Toda a conta é analisada e aprovada pela Direcção antes de ser activada. Nome, curso, classe e telefone são obrigatórios.</p><input class="hp" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
 <label>Nome completo<input name="full_name" required maxlength="100" autocomplete="name"></label>
 <label>E-mail<input type="email" name="email" required maxlength="120" autocomplete="email"></label>
 <label>Curso<select name="course" required><option value="">Escolha…</option><option>Língua Portuguesa e Educação Moral e Cívica</option><option>Biologia e Química</option><option>Matemática e Física</option><option>Geografia e História</option><option>Ensino Primário</option></select></label>
 <label>Classe<input name="grade" required maxlength="40" placeholder="ex.: 10.ª classe"></label>
 <label>Turma<input name="class_group" maxlength="20" placeholder="ex.: B"></label>
-<label>Telefone (opcional)<input name="phone" inputmode="tel" maxlength="30" autocomplete="tel"></label>
+<label>Telefone<input name="phone" required inputmode="tel" minlength="9" maxlength="20" autocomplete="tel" placeholder="9XX XXX XXX"></label>
 <label>Palavra-passe (mínimo 8 caracteres)<input type="password" name="password" required minlength="8" autocomplete="new-password"></label>
 <label>Confirmar palavra-passe<input type="password" name="password2" required minlength="8" autocomplete="new-password"></label>
 <label class="consent"><input type="checkbox" name="consent"> Li e aceito o tratamento dos meus dados para gerir a minha conta e os meus pedidos.</label><button type="button" class="link-btn" data-open-privacy>Ver aviso de privacidade</button>
-<button class="btn btn-primary" type="submit">Criar conta</button><p class="form-status" id="registerStatus" aria-live="polite"></p></form></div>
+<button class="btn btn-primary" type="submit">Criar conta</button><p class="form-status" id="registerStatus" aria-live="polite"></p><p class="switch">Já tem uma conta? <button type="button" class="link-btn" data-auth="login">Entrar</button></p></form></div>
 <div id="studentBox" hidden><div class="acct-head"><strong id="studentHello"></strong><button type="button" class="btn-sm" id="logoutBtn">Sair</button></div><p class="notice" id="acctBanner" hidden></p>
-<div class="tabs" id="studentTabs"><button type="button" class="tab-btn active" data-st="pedidos">Os meus pedidos</button><button type="button" class="tab-btn" data-st="novo">Novo pedido</button><button type="button" class="tab-btn" data-st="trabalho">Trabalho escolar</button><button type="button" class="tab-btn" data-st="avisos">Notificações <span id="unread"></span></button><button type="button" class="tab-btn" data-st="perfil">Perfil</button></div>
+<div class="tabs" id="studentTabs"><button type="button" class="tab-btn active" data-st="pedidos">Os meus pedidos</button><button type="button" class="tab-btn" data-st="novo">Novo pedido</button><button type="button" class="tab-btn" data-st="trabalhos">Trabalhos</button><button type="button" class="tab-btn" data-st="avisos">Notificações <span id="unread"></span></button><button type="button" class="tab-btn" data-st="perfil">Perfil</button></div>
 <div id="studentBody"></div></div></div></section>
 
 <section class="section" id="assistente"><div class="acct"><p class="muted">Pesquisa nos conteúdos publicados no portal: perguntas frequentes, biblioteca, documentos e comunicados. Não é inteligência artificial.</p>
@@ -167,7 +169,7 @@
 <div class="modal" id="suggestionModal" aria-hidden="true"><div class="modal-backdrop" data-close-suggestion></div><div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="suggestionTitle"><button class="modal-close" data-close-suggestion aria-label="Fechar">×</button><p class="eyebrow dark">PARTICIPAÇÃO ESTUDANTIL</p><h2 id="suggestionTitle">Envie a sua mensagem</h2><form id="suggestionForm"><input class="hp" name="website" tabindex="-1" autocomplete="off" aria-hidden="true"><label>Tipo de mensagem<select name="type" required><option value="Sugestão">Sugestão</option><option value="Reclamação">Reclamação</option><option value="Dúvida">Dúvida</option></select></label><label>Nome (opcional)<input name="name" maxlength="100" placeholder="Pode deixar em branco"></label><label>Telefone ou e-mail para resposta (opcional)<input name="contact" maxlength="120" autocomplete="off" placeholder="Sem contacto, não conseguimos responder-lhe"></label><label>Mensagem<textarea name="message" required minlength="5" maxlength="1500" rows="5" placeholder="Explique a situação com respeito e clareza"></textarea></label><button class="btn btn-primary full" type="submit">Enviar mensagem</button><p class="form-status" id="suggestionStatus" aria-live="polite"></p></form></div></div>
 
 <div class="modal" id="adminModal" aria-hidden="true"><div class="modal-backdrop" data-close-admin></div><div class="modal-panel admin-wide" role="dialog" aria-modal="true" aria-labelledby="adminTitle"><button class="modal-close" data-close-admin aria-label="Fechar">×</button><p class="eyebrow dark">ACESSO RESTRITO</p><h2 id="adminTitle">Área da Direcção</h2>
-<form id="adminLogin"><label>E-mail<input type="email" name="email" autocomplete="username" required></label><label>Palavra-passe<input type="password" name="password" autocomplete="current-password" required></label><button class="btn btn-primary full" type="submit">Entrar</button><p class="form-status" id="adminStatus" aria-live="polite"></p></form>
+<form id="adminLogin"><label>E-mail<input type="email" name="email" autocomplete="username" required></label><label>Palavra-passe<input type="password" name="password" autocomplete="current-password" required></label><button class="btn btn-primary full" type="submit">Entrar</button><p class="form-status" id="adminStatus" aria-live="polite"></p><p class="switch"><button type="button" class="link-btn" id="adminForgot">Esqueceu a palavra-passe?</button></p></form>
 <div id="adminPanel" hidden><div class="admin-bar"><div id="adminTabs" class="admin-tabs"></div><button class="btn btn-primary" id="adminLogout" type="button">Sair</button></div><div id="adminBody"></div></div></div></div>
 <div class="modal" id="privacyModal" aria-hidden="true"><div class="modal-backdrop" data-close-privacy></div><div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="privacyTitle"><button class="modal-close" data-close-privacy aria-label="Fechar">×</button><p class="eyebrow dark">TRANSPARÊNCIA</p><h2 id="privacyTitle">Privacidade e dados pessoais</h2>
 <p><strong>O que recolhemos:</strong> apenas o que preencher nos formulários, como nome, curso, classe, telefone, e-mail (opcional) e a mensagem que escrever.</p>
@@ -178,6 +180,7 @@
 <a class="wa-float" id="waFloat" href="#" target="_blank" rel="noopener" hidden>WhatsApp</a>
 <div class="lightbox" id="lightbox" hidden><button class="lb-close" type="button" aria-label="Fechar">×</button><img alt=""><p></p></div>
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
+<div class="tabbar" role="navigation" aria-label="Navegação rápida"><a href="#inicio" class="on"><i>⌂</i>Início</a><a href="#noticias"><i>✦</i>Notícias</a><a href="#biblioteca"><i>▤</i>Biblioteca</a><a href="#conta"><i>◔</i>Conta</a><button type="button" id="tabMore"><i>☰</i>Menu</button></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="config.js"></script>
 <script src="app.js"></script>

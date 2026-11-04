@@ -1,6 +1,6 @@
 // Service worker simples: tenta sempre a rede primeiro (conteúdo actualizado)
 // e usa a cópia guardada só quando não há ligação. Dados do Supabase nunca são guardados.
-const CACHE = "ae-v5";
+const CACHE = "ae-v4";
 const SHELL = ["./", "index.html", "styles.css", "app.js", "config.js", "icon-192.png", "icon-180.png", "hero-poster.jpg", "logo.png", "manifest.webmanifest"];
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));

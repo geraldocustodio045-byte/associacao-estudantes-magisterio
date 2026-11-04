@@ -53,6 +53,7 @@ function showRoom(){
     $("#roomNext").innerHTML=`<a href="#${p}">← ${esc(ROOMS[p].t)}</a><button type="button" class="mid" data-close-room>Todos os espaços</button><a href="#${n}">${esc(ROOMS[n].t)} →</a>`;
     rv.scrollTop=0;
   }
+  setTab(room);
   document.title=room?`${ROOMS[room].t} | Associação dos Estudantes`:"Associação dos Estudantes | Magistério Nº 1028 CNO";
 }
 document.addEventListener("click",e=>{if(e.target.closest("[data-close-room]")||e.target.id==="roomView")closeRoom();});
@@ -109,13 +110,15 @@ $("#suggestionForm").addEventListener("submit",e=>{
 let ANN=[],DOCS=[],FAQ=[];
 const ST={tab:"pedidos",uid:null,profile:{}};
 const ST_STATUS={"recebida":"Recebido","em análise":"Em análise","respondida":"Respondido","arquivada":"Concluído"};
-function setAuthTab(t){$$("[data-auth]").forEach(b=>b.classList.toggle("active",b.dataset.auth===t));$("#loginForm").hidden=t!=="login";$("#registerForm").hidden=t!=="register";}
+function setAuthTab(t){$$("[data-auth]").forEach(b=>b.classList.toggle("active",b.dataset.auth===t));$("#loginForm").hidden=t!=="login";$("#registerForm").hidden=t!=="register";$("#resetForm").hidden=t!=="reset";}
 $$("[data-auth]").forEach(b=>b.addEventListener("click",()=>setAuthTab(b.dataset.auth)));
 $("#loginForm").addEventListener("submit",async e=>{e.preventDefault();if(!sb)return;const f=e.currentTarget,d=Object.fromEntries(new FormData(f)),st=$("#loginStatus");
   st.textContent="A entrar…";const {error}=await sb.auth.signInWithPassword({email:d.email.trim(),password:d.password});f.password.value="";
   st.textContent=error?"E-mail ou palavra-passe incorrectos.":"";if(!error)refreshAccount();});
 $("#registerForm").addEventListener("submit",async e=>{e.preventDefault();if(!sb)return;const f=e.currentTarget,d=Object.fromEntries(new FormData(f)),st=$("#registerStatus");
   if(d.website)return;
+  if(!d.full_name.trim()||!d.course||!d.grade.trim()){st.textContent="Preencha o nome, o curso e a classe.";return;}
+  if(d.phone.replace(/\D/g,"").length<9){st.textContent="Indique um número de telefone válido.";return;}
   if(d.password.length<8){st.textContent="A palavra-passe deve ter pelo menos 8 caracteres.";return;}
   if(d.password!==d.password2){st.textContent="As palavras-passe não coincidem.";return;}
   if(!d.consent){st.textContent="É necessário aceitar o tratamento dos dados.";return;}
@@ -125,7 +128,16 @@ $("#registerForm").addEventListener("submit",async e=>{e.preventDefault();if(!sb
   if(error){st.textContent=/registered|exists/i.test(error.message)?"Este e-mail já tem conta.":"Não foi possível criar a conta. Verifique os dados.";return;}
   f.reset();
   if(data.session){await sb.from("profiles").upsert({id:data.user.id,...meta});st.textContent="";refreshAccount();}
-  else st.textContent="Conta criada. Se for pedida confirmação, verifique o seu e-mail e depois entre.";});
+  else st.textContent="Conta criada. A Direcção vai analisar o seu pedido e a conta fica activa depois de aprovada.";});
+const resetUrl=()=>location.origin+location.pathname;
+async function sendReset(email,st){
+  st.textContent="A enviar…";
+  const {error}=await sb.auth.resetPasswordForEmail(email.trim(),{redirectTo:resetUrl()});
+  st.textContent=error?"Não foi possível enviar agora. Tente mais tarde ou contacte a Direcção.":"Se existir uma conta com este e-mail, enviámos um link para definir uma nova palavra-passe.";
+}
+$("#resetForm").addEventListener("submit",e=>{e.preventDefault();if(!sb)return;sendReset(new FormData(e.currentTarget).get("email"),$("#resetStatus"));});
+$("#adminForgot").addEventListener("click",()=>{if(!sb)return;const em=($("#adminLogin [name=email]").value||"").trim();if(!em){$("#adminStatus").textContent="Escreva primeiro o seu e-mail.";return;}sendReset(em,$("#adminStatus"));});
+if(sb) sb.auth.onAuthStateChange(ev=>{if(ev==="PASSWORD_RECOVERY"){ST.tab="perfil";ST.recovery=true;location.hash="conta";setTimeout(refreshAccount,50);}});
 async function refreshAccount(){
   if(!sb)return;const {data:{session}}=await sb.auth.getSession();
   $("#authBox").hidden=!!session;$("#studentBox").hidden=!session;
@@ -135,13 +147,44 @@ async function refreshAccount(){
   $("#studentHello").textContent="Olá, "+(ST.profile.full_name||session.user.email)+(ST.profile.verified&&!ST.profile.suspended?" ✓ Verificado":"");
   const bn=$("#acctBanner"),pf=ST.profile;
   bn.hidden=!(pf.suspended||pf.verified===false);
-  bn.textContent=pf.suspended?"A sua conta está suspensa. Contacte a Direcção.":"A sua conta aguarda verificação da Direcção. Até lá pode consultar o portal, mas ainda não pode enviar pedidos.";
+  bn.textContent=pf.suspended?"A sua conta está suspensa. Contacte a Direcção.":"A sua conta aguarda aprovação da Direcção. Até lá pode consultar o portal, mas ainda não pode enviar pedidos.";
   loadStudentTab(ST.tab);countUnread();
+  if(ST.recovery)toast("Escolha agora a sua nova palavra-passe, em Alterar palavra-passe.",6000);
 }
 async function countUnread(){const {count}=await sb.from("notifications").select("id",{count:"exact",head:true}).eq("read",false);$("#unread").textContent=count?`(${count})`:"";}
+const PLAN={price:"3.800,00 Kz",express:"935366319"};
+async function loadWorks(box){
+  const p=ST.profile;
+  if(p.suspended||p.verified===false){box.innerHTML=`<p class="muted">Disponível depois de a Direcção aprovar a sua conta.</p>`;return;}
+  const [q,w,pay]=await Promise.all([sb.rpc("work_quota"),sb.from("work_requests").select("*").eq("user_id",ST.uid).order("created_at",{ascending:false}).limit(30),sb.from("premium_payments").select("*").eq("user_id",ST.uid).order("created_at",{ascending:false}).limit(5)]);
+  if(q.error||!q.data){box.innerHTML=`<p class="muted">Este serviço ainda não está activo. Tente mais tarde.</p>`;return;}
+  renderWorks(box,q.data,w.data||[],pay.data||[]);
+}
+function renderWorks(box,Q,works,pays){
+  const p=ST.profile||{}, pending=pays.find(x=>x.status==="pendente");
+  const freeLeft=Math.max(0,Q.free_limit-Q.free_used), premLeft=Q.premium_active?Math.max(0,Q.premium_limit-Q.premium_used):0;
+  const dt=x=>x?new Date(x).toLocaleString("pt-PT",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}):"";
+  const waNum=(CFG&&CFG.WHATSAPP_NUMBER)||("244"+PLAN.express);
+  const quota=Q.premium_active?`<div class="quota prem"><b>Plano Premium</b> · ${Q.premium_used} de ${Q.premium_limit} pedidos usados · válido até ${esc(fmt(Q.premium_until))} · entrega em menos de 24 horas</div>`:`<div class="quota"><b>Plano grátis</b> · ${Q.free_used} de ${Q.free_limit} pedidos usados este mês · entrega em 48 horas</div>`;
+  const form=(premLeft>0||freeLeft>0)?`<form id="workForm" class="work-form"><h3 class="form-title">Pedir um trabalho escolar</h3><p class="muted">Escolha o tema e conte-nos tudo o que quer no trabalho. Depois é só aguardar: ${premLeft>0?"entregamos em menos de 24 horas":"o prazo de entrega é de 48 horas"}.</p>
+<label>Tema do trabalho<input name="theme" required minlength="3" maxlength="200"></label>
+<label>Disciplina (opcional)<input name="subject" maxlength="100"></label>
+<label>O que quer no trabalho (detalhes, estrutura, páginas, normas…)<textarea name="details" rows="6" required minlength="10" maxlength="3000"></textarea></label>
+<label>Como quer receber<select name="delivery"><option>PDF enviado por WhatsApp</option><option>Impresso</option></select></label>
+<label>O seu WhatsApp<input name="whatsapp" required inputmode="tel" maxlength="30" value="${esc(p.phone||"")}"></label>
+<button class="btn btn-primary" type="submit">Enviar pedido</button><p class="form-status" id="workStatus" aria-live="polite"></p></form>`
+  :`<div class="blocked"><h3 class="form-title">Pedidos indisponíveis por agora</h3><p>${Q.premium_active?"Já utilizou os 10 pedidos do Plano Premium. Pode renovar o plano abaixo.":"Já utilizou os 3 pedidos gratuitos deste mês. A opção volta a ficar disponível no início do próximo mês."} Se precisar de mais trabalhos ou de entrega mais rápida, a solução é activar o <b>Plano Premium</b>.</p></div>`;
+  const msg=encodeURIComponent(`Olá! Fiz o pagamento do Plano Premium${pending?" ("+pending.protocol+")":""} e enviei o comprovativo no site. Nome: ${p.full_name||""}.`);
+  const premium=(Q.premium_active&&premLeft>0)?"":`<div class="plan-card"><span class="plan-tag">Plano Premium</span><h3>${PLAN.price} <small>por mês</small></h3>
+<ul><li>10 trabalhos profissionais durante o mês</li><li>Entrega em menos de 24 horas</li><li>Impresso, ou em PDF no WhatsApp, como preferir</li></ul>
+${pending?`<div class="pay-box"><b>Comprovativo enviado (${esc(pending.protocol||"")})</b><p>A Direcção está a confirmar o pagamento. Receberá uma notificação quando o plano ficar activo.</p><a class="btn-wa" href="https://wa.me/${esc(waNum)}?text=${msg}" target="_blank" rel="noopener">Avisar a Direcção no WhatsApp</a></div>`
+:`<div class="pay-box"><b>Como activar</b><ol><li>Envie <b>${PLAN.price}</b> por Multicaixa Express para o número <b>${PLAN.express}</b>.</li><li>Tire uma captura do comprovativo.</li><li>Envie-a aqui em baixo. A Direcção confirma o pagamento e activa o plano.</li></ol>
+<form id="proofForm"><label>Comprovativo (imagem ou PDF, até 6 MB)<input type="file" name="proof" accept="image/*,application/pdf" required></label><label>Nota (opcional)<input name="note" maxlength="300"></label><button class="btn btn-primary" type="submit">Enviar comprovativo</button><p class="form-status" id="proofStatus" aria-live="polite"></p></form></div>`}</div>`;
+  const list=works.length?works.map(r=>`<div class="req"><small>${esc(r.protocol||"")} · ${esc(fmt(r.created_at))}</small><b>${esc(r.theme)}</b> <span class="chip">${esc(r.status)}</span> <span class="chip alt">${r.plan==="premium"?"Premium":"Grátis"}</span><p>Entrega prevista até ${esc(dt(r.due_at))} · ${r.delivery==="impresso"?"Impresso":"PDF no WhatsApp"}</p></div>`).join(""):`<p class="muted">Ainda não pediu nenhum trabalho.</p>`;
+  box.innerHTML=quota+form+premium+`<h3 class="form-title" style="margin-top:26px">Os meus trabalhos</h3>`+list;
+}
 async function loadStudentTab(t){
   ST.tab=t;$$("#studentTabs .tab-btn").forEach(b=>b.classList.toggle("active",b.dataset.st===t));const box=$("#studentBody"),p=ST.profile;
-  if(t==="trabalho"){workTab(box,p);return;}
   if(t==="pedidos"){const {data,error}=await sb.from("suggestions").select("*").eq("user_id",ST.uid).order("created_at",{ascending:false});
     box.innerHTML=error?`<p class="muted">Erro ao carregar.</p>`:!data.length?`<p class="muted">Ainda não fez nenhum pedido.</p>`:data.map(r=>`<div class="req"><small>${esc(r.protocol||"")} · ${esc(fmt(r.created_at))}</small><b>${esc(r.kind)}</b> <span class="chip">${esc(ST_STATUS[r.status]||r.status)}</span><p>${esc(r.message)}</p>${r.reply?`<p class="reply"><b>Resposta da Direcção:</b> ${esc(r.reply)}</p>`:""}</div>`).join("");}
   if(t==="novo")box.innerHTML=`<form id="newReqForm"><label>Tipo<select name="kind"><option>Sugestão</option><option>Reclamação</option><option>Dúvida</option></select></label><label>Mensagem<textarea name="message" rows="5" required minlength="5" maxlength="1500"></textarea></label><button class="btn btn-primary" type="submit">Enviar pedido</button><p class="form-status" id="newReqStatus" aria-live="polite"></p></form>`;
@@ -149,6 +192,7 @@ async function loadStudentTab(t){
   if(t==="avisos"){const {data}=await sb.from("notifications").select("*").order("created_at",{ascending:false}).limit(50);
     box.innerHTML=!data||!data.length?`<p class="muted">Sem notificações.</p>`:data.map(n=>`<div class="req${n.read?"":" new"}"><small>${esc(fmt(n.created_at))}</small><b>${esc(n.title)}</b><p>${esc(n.body)}</p></div>`).join("");
     if(data&&data.some(n=>!n.read)){await sb.from("notifications").update({read:true}).eq("read",false);countUnread();}}
+  if(t==="trabalhos")await loadWorks(box);
   if(t==="perfil")box.innerHTML=`<form id="profileForm"><label>Nome completo<input name="full_name" required maxlength="100" value="${esc(p.full_name||"")}"></label><label>Curso<input name="course" maxlength="80" value="${esc(p.course||"")}"></label><label>Classe<input name="grade" maxlength="40" value="${esc(p.grade||"")}"></label><label>Turma<input name="class_group" maxlength="20" value="${esc(p.class_group||"")}"></label><label>Telefone<input name="phone" maxlength="30" value="${esc(p.phone||"")}"></label><button class="btn btn-primary" type="submit">Guardar perfil</button><p class="form-status" id="profileStatus"></p></form><form id="pwForm"><h3>Alterar palavra-passe</h3><label>Nova palavra-passe<input type="password" name="pw" minlength="8" required autocomplete="new-password"></label><label>Confirmar<input type="password" name="pw2" minlength="8" required autocomplete="new-password"></label><button class="btn btn-primary" type="submit">Alterar</button><p class="form-status" id="pwStatus"></p></form>`;
 }
 $("#studentTabs").addEventListener("click",e=>{const b=e.target.closest("[data-st]");if(b)loadStudentTab(b.dataset.st);});
@@ -158,10 +202,26 @@ $("#studentBody").addEventListener("submit",async e=>{e.preventDefault();const f
     const {data,error}=await sb.from("suggestions").insert({kind:d.kind,sender_name:ST.profile.full_name||"",message:d.message.trim()}).select("protocol").single();
     if(error){st.textContent=/conta_nao_verificada/.test(error.message||"")?"A sua conta ainda não foi verificada pela Direcção.":"Não foi possível enviar. Tente mais tarde.";return;}
     toast("Pedido enviado. Protocolo "+(data&&data.protocol||""));loadStudentTab("pedidos");}
+  if(f.id==="workForm"){const st=$("#workStatus");st.textContent="A enviar…";
+    const {data,error}=await sb.from("work_requests").insert({theme:d.theme.trim(),subject:(d.subject||"").trim(),details:d.details.trim(),delivery:d.delivery==="Impresso"?"impresso":"pdf",whatsapp:d.whatsapp.trim()}).select("protocol,due_at").single();
+    if(error){const m=error.message||"";st.textContent=/limite_gratis/.test(m)?"Já atingiu o limite de pedidos gratuitos deste mês.":/conta_nao_verificada/.test(m)?"A sua conta ainda não foi aprovada.":"Não foi possível enviar. Tente mais tarde.";return;}
+    toast("Pedido enviado. Protocolo "+data.protocol,5000);loadStudentTab("trabalhos");return;}
+  if(f.id==="proofForm"){const st=$("#proofStatus"),file=f.proof.files[0];
+    if(!file){st.textContent="Escolha o comprovativo.";return;}
+    if(file.size>6*1024*1024){st.textContent="O ficheiro tem mais de 6 MB.";return;}
+    st.textContent="A enviar…";
+    const up=file.type.startsWith("image/")?await shrink(file):file;
+    const ext=(up.name.split(".").pop()||"jpg").toLowerCase().replace(/[^a-z0-9]/g,"");
+    const path=`${ST.uid}/${Date.now()}-${Math.random().toString(36).slice(2,8)}.${ext}`;
+    const u=await sb.storage.from("payment-proofs").upload(path,up,{contentType:up.type||undefined});
+    if(u.error){st.textContent="Não foi possível enviar o ficheiro.";return;}
+    const {data,error}=await sb.from("premium_payments").insert({proof_path:path,note:(d.note||"").trim()}).select("protocol").single();
+    if(error){st.textContent=/idx|duplicate|unique/i.test(error.message||"")?"Já tem um comprovativo a aguardar confirmação.":"Não foi possível registar o comprovativo.";return;}
+    toast("Comprovativo enviado. Protocolo "+data.protocol,5000);loadStudentTab("trabalhos");return;}
   if(f.id==="profileForm"){const {error}=await sb.from("profiles").update({full_name:d.full_name.trim(),course:d.course.trim(),grade:d.grade.trim(),class_group:d.class_group.trim(),phone:d.phone.trim()}).eq("id",ST.uid);
     $("#profileStatus").textContent=error?"Erro ao guardar.":"Perfil guardado.";if(!error){Object.assign(ST.profile,d);$("#studentHello").textContent="Olá, "+d.full_name.trim();}}
   if(f.id==="pwForm"){const st=$("#pwStatus");if(d.pw!==d.pw2){st.textContent="As palavras-passe não coincidem.";return;}
-    const {error}=await sb.auth.updateUser({password:d.pw});st.textContent=error?"Não foi possível alterar.":"Palavra-passe alterada.";f.reset();}
+    const {error}=await sb.auth.updateUser({password:d.pw});st.textContent=error?"Não foi possível alterar.":"Palavra-passe alterada.";f.reset();if(!error)ST.recovery=false;}
 });
 function assistSearch(q){
   const w=norm(q).split(/[^a-z0-9]+/).filter(x=>x.length>2);if(!w.length)return [];
@@ -214,39 +274,22 @@ $$("[data-ask]").forEach(b=>b.addEventListener("click",()=>openModal("#suggestio
 /* Biblioteca */
 const LIB_CATS=["Livros","Manuais escolares","Fichas e exercícios","Planos de aula","Provas e exames","Apontamentos","Legislação e regulamentos","Modelos e formulários","Ligações úteis","Outros"];
 const LIB_ICON={"Livros":"LIV","Manuais escolares":"MAN","Fichas e exercícios":"FIC","Planos de aula":"PLA","Provas e exames":"PRO","Apontamentos":"APO","Legislação e regulamentos":"LEI","Modelos e formulários":"MOD","Ligações úteis":"LNK","Outros":"OUT"};
-
-/* ---- Capas: imagem própria, miniatura da 1.ª página do PDF, ou capa gerada ---- */
-const hueOf=s=>[...String(s)].reduce((h,c)=>(h*31+c.charCodeAt(0))&0xffff,7)%360;
-function bookCard(title,sub,url,cover,tag,cat){
-  const h=hueOf(cat||title), u=safeUrl(url), isImg=/\.(jpe?g|png|webp|gif|avif)(\?|$)/i.test(u), isPdf=/\.pdf(\?|$)/i.test(u);
-  const img=(cover&&safeUrl(cover)!=="#")?safeUrl(cover):(isImg?u:"");
-  return `<a class="book" href="${esc(u)}" target="_blank" rel="noopener"><div class="cover" style="--c1:hsl(${h} 55% 22%);--c2:hsl(${(h+35)%360} 50% 40%)"${isPdf&&!img?` data-pdf="${esc(u)}"`:""}>${img?`<img src="${esc(img)}" alt="Capa de ${esc(title)}" loading="lazy" onerror="this.remove()">`:""}<small>${esc(tag)}</small><b>${esc(title)}</b></div><p class="book-title">${esc(title)}</p><p class="book-sub">${esc(sub||"")}</p></a>`;
-}
-const pdfThumbs=new Map(); let pdfLib=null;
-function loadPdfJs(){return pdfLib||(pdfLib=new Promise((ok,no)=>{const s=document.createElement("script");s.src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js";s.onload=()=>{pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js";ok(pdfjsLib);};s.onerror=no;document.head.appendChild(s);}));}
-const coverIO="IntersectionObserver" in window?new IntersectionObserver(es=>es.forEach(async e=>{
-  if(!e.isIntersecting) return; const el=e.target; coverIO.unobserve(el); const url=el.dataset.pdf;
-  try{
-    if(!pdfThumbs.has(url)){
-      const lib=await loadPdfJs(); const pdf=await lib.getDocument({url}).promise; const pg=await pdf.getPage(1);
-      const vp=pg.getViewport({scale:1}), sc=360/vp.width, v=pg.getViewport({scale:sc}), cv=document.createElement("canvas");
-      cv.width=v.width;cv.height=v.height; await pg.render({canvasContext:cv.getContext("2d"),viewport:v}).promise;
-      pdfThumbs.set(url,cv.toDataURL("image/jpeg",.78));
-    }
-    const im=new Image(); im.alt="Capa do documento"; im.src=pdfThumbs.get(url); el.prepend(im); el.classList.add("has-img");
-  }catch(err){/* mantém a capa gerada */}
-}),{rootMargin:"200px"}):null;
-function hydrateCovers(){ if(coverIO) $$(".cover[data-pdf]").forEach(el=>coverIO.observe(el)); }
 let LIB=[],libShown=12;
 $("#libCat").innerHTML=["Todas",...LIB_CATS].map(c=>`<option>${esc(c)}</option>`).join("");
 const norm=s=>String(s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+const LIB_COL={"Livros":"#10264b","Manuais escolares":"#1f6b3a","Fichas e exercícios":"#5a2a7a","Planos de aula":"#0f6270","Provas e exames":"#a3510f","Apontamentos":"#2c5e91","Legislação e regulamentos":"#7a3b8c","Modelos e formulários":"#8a6d1f","Ligações úteis":"#0f6270","Outros":"#4d5b6d","Documento":"#10264b"};
+function coverHtml(r,cat){
+  const col=LIB_COL[cat]||"#10264b";
+  return r.cover_url?`<img src="${esc(safeUrl(r.cover_url))}" alt="Capa de ${esc(r.title)}" loading="lazy">`:`<div class="cover-ph" style="--c:${col}"><b>${esc(LIB_ICON[cat]||"DOC")}</b><span>${esc(r.title)}</span></div>`;
+}
+const itemCard=(r,cat,url,meta)=>`<a class="lib-card" href="${esc(safeUrl(url))}" target="_blank" rel="noopener"><div class="cover">${coverHtml(r,cat)}</div><strong>${esc(r.title)}</strong><small>${esc(meta)}</small></a>`;
+$("#libList").className="lib-grid"; $("#documentList").className="lib-grid";
 function renderLib(){
   if(!LIB.length) return;
   const q=norm($("#libSearch").value), c=$("#libCat").value;
   const list=LIB.filter(r=>(c==="Todas"||r.category===c)&&(!q||norm([r.title,r.author,r.subject,r.grade,r.description].join(" ")).includes(q)));
   $("#libCount").textContent=`${list.length} de ${LIB.length} recursos`;
-  $("#libList").className="library";$("#libList").innerHTML=list.length?list.slice(0,libShown).map(r=>bookCard(r.title,[r.category,r.subject,r.grade,r.author].filter(Boolean).join(" · "),r.file_url,r.cover_url||r.image_url,LIB_ICON[r.category]||"DOC",r.category)).join(""):`<p class="muted">Nenhum recurso encontrado.</p>`;
-  hydrateCovers();
+  $("#libList").innerHTML=list.length?list.slice(0,libShown).map(r=>itemCard(r,r.category,r.file_url,[r.category,r.subject,r.grade,r.author].filter(Boolean).join(" · "))).join(""):`<p class="muted">Nenhum recurso encontrado.</p>`;
   $("#libMore").hidden=list.length<=libShown;
 }
 $("#libSearch").addEventListener("input",()=>{libShown=12;renderLib();});
@@ -267,13 +310,13 @@ async function loadPublic(){
     sb.from("honor_roll").select("*").eq("published",true).eq("consent",true).order("sort_order",{ascending:true}).order("created_at",{ascending:true}),
     sb.from("faq_items").select("*").eq("published",true).order("sort_order",{ascending:true}).order("created_at",{ascending:true})]);
   LIB=l.data||[]; renderLib();
-  FAQ=f.data||[]; renderHonor(h.data||[]); renderFaq(f.data||[]);
+  FAQ=f.data||[]; renderHonor(h.data||[]); renderFaq(f.data||[]); renderHome();
   if(m.data?.length){
-    const execHtml=m.data.map(r=>`<article class="team-card">${r.photo_url?`<img src="${esc(safeUrl(r.photo_url))}" alt="${esc(r.full_name)}" loading="lazy">`:`<div class="team-ph" aria-hidden="true">${esc(r.full_name.trim().split(/\s+/).map(w=>w[0]).slice(0,2).join("").toUpperCase())}</div>`}<h3>${esc(r.full_name)}</h3><p class="role">${esc(r.role)}</p>${r.bio?`<p class="bio">${esc(r.bio)}</p><button type="button" class="bio-btn" data-name="${esc(r.full_name)}" data-role="${esc(r.role)}">Ver biografia</button>`:""}</article>`).join("");
+    const execHtml=m.data.map(r=>`<article class="team-card">${r.photo_url?`<img src="${esc(safeUrl(r.photo_url))}" alt="${esc(r.full_name)}" loading="lazy">`:`<div class="team-ph" aria-hidden="true">${esc(r.full_name.trim().split(/\s+/).map(w=>w[0]).slice(0,2).join("").toUpperCase())}</div>`}<h3>${esc(r.full_name)}</h3><p class="role">${esc(r.role)}</p>${r.bio?`<details class="bio-more"><summary><span class="s-open">Ver biografia</span><span class="s-close">Ocultar biografia</span></summary><p>${esc(r.bio)}</p></details>`:""}</article>`).join("");
     $("#teamGrid").innerHTML=execHtml; $("#execGrid").innerHTML=execHtml;
   }
   GAL=g.data||[]; renderGallery();
-  ANN=a.data||[]; DOCS=d.data||[];
+  ANN=a.data||[]; DOCS=d.data||[]; EVT=e.data||[];
   const col=["blue","gold","green"];
   if(a.data?.length){
     $("#newsGrid").innerHTML=a.data.map((r,i)=>`<article class="news-card${i===0?" featured":""}"><div class="news-visual visual-${col[i%3]}"><span>COMUNICADO</span><b>AE</b></div><div class="card-body"><p class="meta">${esc(fmt(r.published_at||r.created_at))}</p><h3>${esc(r.title)}</h3><p>${esc(r.summary)}</p></div></article>`).join("");
@@ -284,7 +327,7 @@ async function loadPublic(){
       return `<article class="event-card"><div class="event-date"><b>${dt?String(dt.getDate()).padStart(2,"0"):"—"}</b><span>${dt?dt.toLocaleDateString("pt-PT",{month:"short"}).toUpperCase():"DATA"}</span></div><div><span class="tag">${esc(r.location||"EVENTO")}</span><h3>${esc(r.title)}</h3><p>${esc(r.details)}</p>${r.image_url?`<img class="event-img" src="${esc(safeUrl(r.image_url))}" alt="" loading="lazy">`:""}</div></article>`;}).join("");
   }
   if(d.data?.length){
-    $("#documentList").className="library";$("#documentList").innerHTML=d.data.map(r=>bookCard(r.title,r.description,r.public_url,r.cover_url,"DOC","Documento")).join("");hydrateCovers();
+    $("#documentList").innerHTML=d.data.map(r=>itemCard(r,"Documento",r.public_url,r.description||"Documento")).join("");
   }
 }
 loadPublic();
@@ -297,14 +340,21 @@ function contactLink(c){
   if(d.length>=11) return `<a href="https://wa.me/${d}" target="_blank" rel="noopener">Responder no WhatsApp: ${esc(c)}</a>`;
   return `<small>Contacto: ${esc(c)}</small>`;
 }
+async function enrichProfiles(rows){
+  const ids=[...new Set(rows.map(r=>r.user_id).filter(Boolean))]; if(!ids.length) return;
+  const {data}=await sb.from("profiles").select("id,full_name,phone,grade").in("id",ids);
+  const m=Object.fromEntries((data||[]).map(p=>[p.id,p])); rows.forEach(r=>{r._p=m[r.user_id];});
+}
 const TABS={
   member_requests:{label:"Inscrições",status:["pendente","aprovado","recusado"],
     line:r=>`<b>${esc(r.full_name)}</b> · ${esc(r.course)}, ${esc(r.grade)}<br>${contactLink(r.phone)}${r.email?"<br>"+contactLink(r.email):""}${r.motivation?`<br><small>${esc(r.motivation)}</small>`:""}`},
   suggestions:{label:"Mensagens",status:["recebida","em análise","respondida","arquivada"],
     line:r=>`<b>${esc(r.kind)}</b>${r.sender_name?" · "+esc(r.sender_name):""}<br>${esc(r.message)}<br>${contactLink(r.contact)}${r.protocol?`<br><small>Protocolo ${esc(r.protocol)}</small>`:""}${r.reply?`<br><small>Resposta: ${esc(r.reply)}</small>`:""}`},
   profiles:{label:"Estudantes",noDelete:true,search:true,
-    line:r=>`<b>${esc(r.full_name||"(sem nome)")}</b> <span class="chip">${r.suspended?"Suspensa":r.verified?"Verificado":"Por verificar"}</span><br><small>${esc([r.course,r.grade,r.class_group&&"Turma "+r.class_group].filter(Boolean).join(" · "))}</small>${r.phone?`<br>${contactLink(r.phone)}`:""}`,
-    actions:r=>r.suspended?`<button type="button" class="btn-sm" data-vs="restore" data-id="${r.id}" data-v="${!!r.verified}">Reactivar</button>`:`${r.verified?"":`<button type="button" class="btn-sm" data-vs="verify" data-id="${r.id}" data-v="false">Verificar</button>`}<button type="button" class="btn-sm danger" data-vs="suspend" data-id="${r.id}" data-v="${!!r.verified}">Suspender</button>`},
+    line:r=>`<b>${esc(r.full_name||"(sem nome)")}</b> <span class="chip">${r.suspended?(r.verified_at?"Suspensa":"Recusada"):r.verified?"Aprovada":"Por aprovar"}</span><br><small>${esc([r.course,r.grade,r.class_group&&"Turma "+r.class_group].filter(Boolean).join(" · "))}</small>${r.phone?`<br>${contactLink(r.phone)}`:""}`,
+    actions:r=>{const b=(a,t,c="")=>`<button type="button" class="btn-sm ${c}" data-vs="${a}" data-id="${r.id}" data-v="${!!r.verified}">${t}</button>`;
+      if(r.suspended) return r.verified_at?b("restore","Reactivar"):b("verify","Aceitar");
+      return r.verified?b("suspend","Suspender","danger"):b("verify","Aceitar")+b("suspend","Recusar","danger");}},
   announcements:{label:"Comunicados",publish:true,
     form:[["title","Título"],["summary","Texto do comunicado","textarea"]],line:r=>`<b>${esc(r.title)}</b><br><small>${esc(r.summary)}</small>`},
   events:{label:"Actividades",publish:true,
@@ -325,10 +375,11 @@ const TABS={
   faq_items:{label:"Dúvidas",publish:true,
     form:[["question","Pergunta"],["answer","Resposta","textarea"],["sort_order","Ordem (opcional)","number"]],
     line:r=>`<b>${esc(r.question)}</b><br><small>${esc(r.answer)}</small>`},
-  work_orders:{label:"Trabalhos",status:["recebido","em execução","entregue","cancelado"],
-    line:r=>`<b>${esc(r.theme)}</b> <span class="chip">${r.plan==="premium"?"PREMIUM · 24h":"Grátis · 48h"}</span><br>${esc(r.student_name||"")} · ${esc(r.delivery==="pdf"?"PDF no WhatsApp":"Impresso")}<br>${contactLink(r.phone)}<br><small>${esc(r.details||"")}</small><br><small>Protocolo ${esc(r.protocol)} · entregar até ${esc(r.due_at?new Date(r.due_at).toLocaleString("pt-PT"):"")}</small>`},
-  premium_payments:{label:"Pagamentos",status:["em análise","confirmado","recusado"],
-    line:r=>`<b>PAGAMENTO PREMIUM · ${esc(r.amount)} Kz</b><br>${esc(r.student_name||"")}<br>${contactLink(r.phone)}${r.note?`<br><small>${esc(r.note)}</small>`:""}<br><button type="button" class="btn-sm" data-proof="${esc(r.proof_path)}">Ver comprovativo</button><br><small>Protocolo ${esc(r.protocol)} · ${esc(new Date(r.created_at).toLocaleString("pt-PT"))}${r.paid_until?" · válido até "+esc(fmt(r.paid_until)):""}</small>`},
+  work_requests:{label:"Trabalhos",status:["recebido","em andamento","concluído","cancelado"],enrich:enrichProfiles,
+    line:r=>`<b>${esc(r.theme)}</b> <span class="chip">${r.plan==="premium"?"Premium":"Grátis"}</span><br><small>${esc(r.protocol||"")} · ${esc((r._p&&r._p.full_name)||"")}${r._p&&r._p.grade?" ("+esc(r._p.grade)+")":""} · entrega até ${esc(new Date(r.due_at).toLocaleString("pt-PT",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}))} · ${r.delivery==="impresso"?"Impresso":"PDF no WhatsApp"}</small><br>${esc(r.details)}${r.subject?`<br><small>Disciplina: ${esc(r.subject)}</small>`:""}<br>${contactLink(r.whatsapp||(r._p&&r._p.phone))}`},
+  premium_payments:{label:"Pagamentos",noDelete:true,enrich:enrichProfiles,
+    line:r=>`<b>${esc((r._p&&r._p.full_name)||"Estudante")}</b> · ${esc(r.protocol||"")} <span class="chip">${esc(r.status)}</span><br><small>${esc(String(r.amount).replace(".",","))} Kz · ${esc(fmt(r.created_at))}${r.note?" · "+esc(r.note):""}${r.valid_until?" · válido até "+esc(fmt(r.valid_until)):""}</small>${r._p&&r._p.phone?`<br>${contactLink(r._p.phone)}`:""}`,
+    actions:r=>`<button type="button" class="btn-sm" data-proof="${esc(r.proof_path)}">Ver comprovativo</button>${r.status==="pendente"?`<button type="button" class="btn-sm" data-pay="confirmado" data-id="${r.id}">Confirmar pagamento</button><button type="button" class="btn-sm danger" data-pay="recusado" data-id="${r.id}">Recusar</button>`:""}`},
   documents:{label:"Documentos",publish:true,
     form:[["title","Título"],["description","Descrição"],["file","Ficheiro (PDF, até 10 MB)","file"],["public_url","…ou link público (https://…)","url"]],
     line:r=>`<b>${esc(r.title)}</b><br><small>${esc(r.public_url)}</small>`}
@@ -344,6 +395,8 @@ async function checkStaff(){
   if(!data){$("#adminStatus").textContent="Esta conta não tem permissão de Direcção.";show("#adminLogin",true);show("#adminPanel",false);return;}
   show("#adminLogin",false);show("#adminPanel",true);
   $("#adminTabs").innerHTML=Object.entries(TABS).map(([k,t])=>`<button type="button" class="tab-btn" data-tab="${k}">${t.label}</button>`).join("");
+  [["premium_payments","Pagamentos","status","pendente"],["work_requests","Trabalhos","status","recebido"]].forEach(([tb,lb,c,v])=>sb.from(tb).select("id",{count:"exact",head:true}).eq(c,v).then(({count})=>{const b=$(`#adminTabs [data-tab="${tb}"]`);if(b&&count)b.textContent=`${lb} (${count})`;}));
+  sb.from("profiles").select("id",{count:"exact",head:true}).eq("verified",false).eq("suspended",false).then(({count})=>{const b=$('#adminTabs [data-tab="profiles"]');if(b&&count)b.textContent=`Estudantes (${count})`;});
   loadTab(currentTab);
 }
 $("#adminLogin").addEventListener("submit",async e=>{
@@ -360,8 +413,12 @@ async function loadTab(name){
   currentTab=name; const t=TABS[name];
   $$("#adminTabs .tab-btn").forEach(b=>b.classList.toggle("active",b.dataset.tab===name));
   const {data,error}=await sb.from(name).select("*").order("created_at",{ascending:false}).limit(300);
+  if(name==="profiles"&&data)data.sort((a,b)=>(!!a.verified||!!a.suspended)-(!!b.verified||!!b.suspended));
+  if(name==="premium_payments"&&data)data.sort((a,b)=>(a.status!=="pendente")-(b.status!=="pendente"));
+  if(t.enrich&&data)await t.enrich(data);
   let html=`<p><button type="button" class="btn-sm" data-export>Exportar tudo em CSV (cópia de segurança)</button></p>`;
-  if(t.search)html+=`<p><input id="adminFind" class="admin-find" placeholder="Pesquisar por nome, curso ou turma…" aria-label="Pesquisar"></p><p class="muted">${(data||[]).filter(r=>!r.verified&&!r.suspended).length} por verificar</p>`;
+  if(t.search)html+=`<p><input id="adminFind" class="admin-find" placeholder="Pesquisar por nome, curso ou turma…" aria-label="Pesquisar"></p><p class="muted">${(data||[]).filter(r=>!r.verified&&!r.suspended).length} por aprovar</p>`;
+  if(name==="library_resources"||name==="documents")html+=`<p><button type="button" class="btn-sm" data-covers>Gerar capas em falta</button></p>`;
   if(t.form) html+=`<form class="admin-form" data-add="${name}">${t.form.map(([k,l,ty,opts])=>ty==="select"?`<label>${l}<select name="${k}">${opts.map(o=>`<option>${esc(o)}</option>`).join("")}</select></label>`:ty==="textarea"?`<label>${l}<textarea name="${k}" rows="3" ${k==="bio"||/opcional/.test(l)?"":"required"}></textarea></label>`:`<label>${l}<input name="${k}" type="${ty||"text"}"${k==="album"?' list="albumList" maxlength="120"':""}${ty==="number"?' step="any"':""} ${(k==="title"&&name!=="library_resources")||k==="full_name"||k==="role"||k==="question"?"required":""}${ty==="file"&&(name==="gallery_images"||name==="library_resources")?" multiple":""}${ty==="file"?' accept="'+(name==="documents"||name==="library_resources"?".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx":"image/*")+'"':""}></label>`).join("")}<button class="btn btn-primary" type="submit">Adicionar (fica oculto até publicar)</button>${name==="gallery_images"?`<datalist id="albumList">${[...new Set((data||[]).map(r=>r.album).filter(Boolean))].map(a=>`<option value="${esc(a)}">`).join("")}</datalist>`:""}</form>`;
   if(error) html+=`<p class="form-status">Erro ao carregar dados.</p>`;
   else if(!data.length) html+=`<p class="muted">Sem registos.</p>`;
@@ -394,8 +451,72 @@ async function exportTab(){
   document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),1500);
   toast(`${all.length} registos exportados.`);
 }
+let pdfjsP=null;
+function loadPdfJs(){
+  if(window.pdfjsLib) return Promise.resolve();
+  if(!pdfjsP) pdfjsP=new Promise((ok,no)=>{const sc=document.createElement("script");sc.src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
+    sc.onload=()=>{pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";ok();};sc.onerror=no;document.head.appendChild(sc);});
+  return pdfjsP;
+}
+async function pdfCover(src){
+  await loadPdfJs();
+  const pdf=await pdfjsLib.getDocument(src instanceof Blob?{data:new Uint8Array(await src.arrayBuffer())}:{url:src}).promise;
+  const page=await pdf.getPage(1), v0=page.getViewport({scale:1}), vp=page.getViewport({scale:420/v0.width});
+  const c=document.createElement("canvas"); c.width=Math.round(vp.width); c.height=Math.round(vp.height);
+  await page.render({canvasContext:c.getContext("2d"),viewport:vp}).promise;
+  const b=await new Promise(r=>c.toBlob(r,"image/jpeg",.82)); if(!b) throw new Error("sem capa");
+  return new File([b],"capa.jpg",{type:"image/jpeg"});
+}
+async function textCover(title,cat){
+  const c=document.createElement("canvas"); c.width=420; c.height=560; const x=c.getContext("2d"), col=LIB_COL[cat]||"#10264b";
+  const g=x.createLinearGradient(0,0,420,560); g.addColorStop(0,col); g.addColorStop(1,"#0a1a2d"); x.fillStyle=g; x.fillRect(0,0,420,560);
+  x.fillStyle="#d7b56d"; x.fillRect(32,40,56,4);
+  x.font="700 15px sans-serif"; x.fillText(String(cat||"").toUpperCase().slice(0,28),32,76);
+  x.fillStyle="#fff"; x.font="700 38px Georgia,serif";
+  const words=String(title||"").split(/\s+/); const lines=[]; let ln="";
+  words.forEach(w=>{const t=ln?ln+" "+w:w; if(x.measureText(t).width>356&&ln){lines.push(ln);ln=w;}else ln=t;}); if(ln) lines.push(ln);
+  lines.slice(0,7).forEach((l,i)=>x.fillText(l,32,150+i*48));
+  x.fillStyle="#ffffff99"; x.font="600 14px sans-serif"; x.fillText("Associação dos Estudantes",32,520);
+  const b=await new Promise(r=>c.toBlob(r,"image/jpeg",.85)); return new File([b],"capa.jpg",{type:"image/jpeg"});
+}
+async function makeCover(file,title,cat){
+  if(file&&(file.type==="application/pdf"||/\.pdf$/i.test(file.name))){try{return await pdfCover(file);}catch(e){}}
+  return textCover(title,cat);
+}
+async function coverUrl(file,title,cat){try{return await uploadFile("event-images",await makeCover(file,title,cat),"covers/");}catch(e){return null;}}
+async function insertWithCover(tb,obj,cover){
+  let r=await sb.from(tb).insert(cover?{...obj,cover_url:cover}:obj);
+  if(r.error&&cover) r=await sb.from(tb).insert(obj);
+  return r;
+}
+async function genCovers(){
+  const tb=currentTab, {data,error}=await sb.from(tb).select("*").is("cover_url",null).limit(500);
+  if(error){toast("Corra primeiro o SQL das capas no Supabase.");return;}
+  if(!data.length){toast("Todas as capas já existem.");return;}
+  let ok=0;
+  for(let i=0;i<data.length;i++){
+    const r=data[i]; toast(`A criar capa ${i+1} de ${data.length}…`);
+    const url=tb==="documents"?r.public_url:r.file_url, cat=tb==="documents"?"Documento":r.category;
+    try{
+      let f=null; if(/\.pdf(\?|$)/i.test(url)){try{f=await pdfCover(url);}catch(e){}}
+      if(!f) f=await textCover(r.title,cat);
+      const cu=await uploadFile("event-images",f,"covers/"); if(!cu) continue;
+      const {error:er}=await sb.from(tb).update({cover_url:cu}).eq("id",r.id); if(!er) ok++;
+    }catch(e){}
+  }
+  toast(`${ok} capas criadas.`); loadTab(currentTab); loadPublic();
+}
 $("#adminBody").addEventListener("click",async e=>{
+  if(e.target.closest("[data-covers]")){await genCovers();return;}
   if(e.target.closest("[data-export]")){await exportTab();return;}
+  const pf=e.target.closest("[data-proof]");
+  if(pf){const w=window.open("","_blank");const {data,error}=await sb.storage.from("payment-proofs").createSignedUrl(pf.dataset.proof,300);
+    if(error||!data){if(w)w.close();toast("Não foi possível abrir o comprovativo.");return;}
+    if(w)w.location=data.signedUrl;else location.href=data.signedUrl;return;}
+  const py=e.target.closest("[data-pay]");
+  if(py){if(py.dataset.pay==="confirmado"&&!confirm("Confirmou no Multicaixa Express que recebeu 3.800,00 Kz?"))return;
+    const {error}=await sb.from("premium_payments").update({status:py.dataset.pay}).eq("id",py.dataset.id);
+    toast(error?"Erro ao actualizar.":(py.dataset.pay==="confirmado"?"Pagamento confirmado. Plano Premium activo.":"Comprovativo recusado."));loadTab(currentTab);return;}
   const vs=e.target.closest("[data-vs]");
   if(vs){const v=vs.dataset.v==="true",a=vs.dataset.vs;
     const {error}=await sb.rpc("set_student_status",{p_user:vs.dataset.id,p_verified:a==="verify"||v,p_suspended:a==="suspend"});
@@ -455,7 +576,8 @@ $("#adminBody").addEventListener("submit",async e=>{
     const base={category:row.category||"Livros",author:row.author||"",subject:row.subject||"",grade:row.grade||"",description:row.description||""};
     if(!files.length){
       if(!row.title||!row.file_url){toast("Indique o título e o link, ou escolha ficheiros.");btn.disabled=false;return;}
-      const {error}=await sb.from(tb).insert({...base,title:row.title,file_url:row.file_url});
+      const cv=await coverUrl(null,row.title,base.category);
+      const {error}=await insertWithCover(tb,{...base,title:row.title,file_url:row.file_url},cv);
       toast(error?"Erro: verifique os campos (o link deve começar por https://).":"Adicionado à biblioteca.");
       btn.disabled=false; if(!error)loadTab(currentTab); loadPublic(); return;
     }
@@ -468,7 +590,8 @@ $("#adminBody").addEventListener("submit",async e=>{
       const url=await uploadFile("documents",fl,"library/");
       if(!url) continue;
       const title=(files.length===1&&row.title)?row.title:fl.name.replace(/\.[^.]+$/,"").replace(/[_]+/g," ").trim();
-      const {error}=await sb.from(tb).insert({...base,title,file_url:url});
+      const cv=await coverUrl(fl,title,base.category);
+      const {error}=await insertWithCover(tb,{...base,title,file_url:url},cv);
       if(!error) ok++;
     }
     toast(`${ok} de ${files.length} publicados.${big?` ${big} com mais de 25 MB foram ignorados (use um link).`:""}`);
@@ -480,10 +603,11 @@ $("#adminBody").addEventListener("submit",async e=>{
     const bucket=tb==="documents"?"documents":"event-images";
     const url=await uploadFile(bucket,tb==="documents"?file:await shrink(file),tb==="executive_members"?"members/":tb==="honor_roll"?"honor/":"");
     if(!url){toast("Erro no envio do ficheiro.");btn.disabled=false;return;}
-    if(tb==="documents")row.public_url=url; else if(tb==="executive_members"||tb==="honor_roll")row.photo_url=url; else row.image_url=url;
+    if(tb==="documents"){row.public_url=url;const cv=await coverUrl(file,row.title||"Documento","Documento");if(cv)row.cover_url=cv;} else if(tb==="executive_members"||tb==="honor_roll")row.photo_url=url; else row.image_url=url;
   }
   if(tb==="documents"&&!row.public_url){toast("Escolha um ficheiro ou indique um link.");btn.disabled=false;return;}
-  const {error}=await sb.from(tb).insert(row);
+  let {error}=await sb.from(tb).insert(row);
+  if(error&&row.cover_url){delete row.cover_url;({error}=await sb.from(tb).insert(row));}
   btn.disabled=false;
   toast(error?"Erro: verifique os campos (o link deve começar por https://).":"Adicionado. Use «Publicar» para o mostrar no site.");
   if(!error)loadTab(currentTab);
@@ -536,83 +660,55 @@ window.addEventListener("scroll",onScroll,{passive:true});onScroll();
   if("IntersectionObserver" in window) new IntersectionObserver(es=>es.forEach(en=>{en.isIntersecting?v.play().catch(()=>{}):v.pause();}),{threshold:.1}).observe($("#inicio"));
 })();
 
-
-/* ---- Biografia completa (janela) ---- */
-(function bioModal(){
-  const m=document.createElement("div"); m.className="bio-modal"; m.hidden=true;
-  m.innerHTML='<div class="bio-back"></div><div class="bio-panel" role="dialog" aria-modal="true" aria-labelledby="bioName"><button type="button" class="bio-x" aria-label="Fechar">×</button><div class="bio-photo"></div><p class="bio-role"></p><h2 id="bioName"></h2><p class="bio-text"></p></div>';
-  document.body.appendChild(m);
-  const close=()=>{m.classList.remove("open");document.body.classList.remove("bio-lock");setTimeout(()=>{m.hidden=true;},250);};
-  document.addEventListener("click",e=>{
-    const b=e.target.closest(".bio-btn"); if(b){const c=b.closest(".team-card");
-      m.querySelector("h2").textContent=b.dataset.name; m.querySelector(".bio-role").textContent=b.dataset.role;
-      m.querySelector(".bio-text").textContent=c.querySelector(".bio").textContent;
-      const im=c.querySelector("img"); m.querySelector(".bio-photo").innerHTML=im?`<img src="${esc(im.src)}" alt="">`:`<div class="team-ph">${esc(c.querySelector(".team-ph")?.textContent||"")}</div>`;
-      m.hidden=false; document.body.classList.add("bio-lock"); requestAnimationFrame(()=>m.classList.add("open")); m.querySelector(".bio-x").focus(); return;}
-    if(e.target.closest(".bio-x")||e.target.classList.contains("bio-back")) close();
-  });
-  document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!m.hidden)close();});
-})();
-
-/* ---- Fluidez: barra de progresso e revelação suave ---- */
-(function fluid(){
-  const p=document.createElement("div"); p.className="scroll-progress"; document.body.prepend(p);
-  addEventListener("scroll",()=>{const d=document.documentElement;p.style.transform=`scaleX(${scrollY/((d.scrollHeight-innerHeight)||1)})`;},{passive:true});
-  if(!("IntersectionObserver" in window)||matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-  const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add("in");io.unobserve(e.target);}}),{threshold:.1});
-  const seen=new WeakSet(), scan=()=>$$(".team-card,.honor-card,.news-card,.event-card,.book,.g-item,.section-head").forEach(el=>{if(seen.has(el))return;seen.add(el);const r=el.getBoundingClientRect();if(r.top<innerHeight)return;el.classList.add("rv");io.observe(el);});
-  scan(); new MutationObserver(scan).observe(document.querySelector("main"),{childList:true,subtree:true});
-})();
-
-
-/* ===== Trabalhos escolares: 3 grátis/mês + plano premium ===== */
-const WORK={price:"3.800,00 Kz",express:"935366319",wa:(CFG.WHATSAPP||"244935366319").replace(/\D/g,""),free:3,prem:10};
-function workWa(msg){return `https://wa.me/${WORK.wa}?text=${encodeURIComponent(msg)}`;}
-async function workTab(box,p){
-  if(p.suspended||p.verified===false){box.innerHTML=`<p class="muted">Só contas verificadas pela Direcção podem pedir trabalhos escolares.</p>`;return;}
-  box.innerHTML=`<p class="muted">A carregar…</p>`;
-  const [o,pg]=await Promise.all([sb.from("work_orders").select("*").eq("user_id",ST.uid).order("created_at",{ascending:false}),sb.from("premium_payments").select("*").eq("user_id",ST.uid).order("created_at",{ascending:false})]);
-  if(o.error||pg.error){box.innerHTML=`<p class="muted">Este serviço ainda não está activo. A Direcção precisa de concluir a configuração.</p>`;return;}
-  const orders=o.data||[],pays=pg.data||[],now=new Date(),m0=new Date(now.getFullYear(),now.getMonth(),1);
-  const prem=pays.find(x=>x.status==="confirmado"&&x.paid_until&&new Date(x.paid_until)>now);
-  const premUsed=prem?orders.filter(x=>x.plan==="premium"&&new Date(x.created_at)>=new Date(prem.confirmed_at)).length:0;
-  const freeUsed=orders.filter(x=>x.plan==="gratis"&&new Date(x.created_at)>=m0).length;
-  const premLeft=prem?Math.max(0,WORK.prem-premUsed):0, freeLeft=Math.max(0,WORK.free-freeUsed);
-  const canOrder=premLeft>0||freeLeft>0, pending=pays.find(x=>x.status==="em análise");
-  let h=`<div class="work-status ${prem?"prem":""}"><b>${prem?"Plano Premium activo":"Plano gratuito"}</b><span>${prem?`Restam ${premLeft} de ${WORK.prem} trabalhos · válido até ${esc(fmt(prem.paid_until))} · entrega em menos de 24 horas`:`Restam ${freeLeft} de ${WORK.free} pedidos este mês · entrega em 48 horas`}</span>${prem&&freeLeft?`<small>Depois dos premium, ainda tem ${freeLeft} pedido(s) gratuito(s) este mês.</small>`:""}</div>`;
-  if(canOrder){
-    h+=`<form id="workForm"><h3>Pedir um trabalho escolar</h3><label>Tema do trabalho<input name="theme" required minlength="3" maxlength="200" placeholder="Ex.: A importância da Educação Moral e Cívica"></label><label>Detalhes e o que quer no trabalho<textarea name="details" rows="5" maxlength="3000" placeholder="Disciplina, classe, número de páginas, o que deve constar, normas do professor…"></textarea></label><label>Como quer receber<select name="delivery"><option value="pdf">PDF no WhatsApp</option><option value="impresso">Impresso</option></select></label><label>WhatsApp para a entrega<input name="phone" required inputmode="tel" maxlength="30" value="${esc(p.phone||"")}"></label><button class="btn btn-primary" type="submit">Enviar pedido</button><p class="form-status" id="workStatus" aria-live="polite"></p></form>`;
-  }else{
-    h+=`<div class="work-block"><b>${prem?"Chegou ao limite do plano premium":"Atingiu o limite de 3 pedidos gratuitos este mês"}</b><p>${prem?"Já usou os "+WORK.prem+" trabalhos do plano premium.":"Os pedidos gratuitos voltam a ficar disponíveis no início do próximo mês."} Se precisa de mais trabalhos agora, adquira o plano premium abaixo: o serviço não está bloqueado, só precisa de ser activado.</p></div>`;
+/* Fundo vivo do início */
+(function liveBg(){
+  const cv=$("#heroFx"); if(!cv) return; const ctx=cv.getContext("2d");
+  const calm=matchMedia("(prefers-reduced-motion: reduce)").matches||(navigator.connection&&navigator.connection.saveData);
+  let W=2,H=2,run=true,dpr=Math.min(devicePixelRatio||1,1.5);
+  const orbs=[{x:.2,y:.3,r:.55,c:"70,125,190",s:.00018},{x:.8,y:.2,r:.5,c:"215,181,109",s:.00022},{x:.6,y:.9,r:.6,c:"40,95,160",s:.00015}];
+  const pts=Array.from({length:44},()=>({x:Math.random(),y:Math.random(),v:.012+Math.random()*.04,s:1+Math.random()*2.2,a:Math.random()*6.28}));
+  const size=()=>{const b=cv.getBoundingClientRect();W=cv.width=Math.max(2,Math.round(b.width*dpr));H=cv.height=Math.max(2,Math.round(b.height*dpr));};
+  function draw(t){
+    ctx.clearRect(0,0,W,H);
+    orbs.forEach((o,i)=>{const x=(o.x+Math.sin(t*o.s+i*2)*.12)*W,y=(o.y+Math.cos(t*o.s*1.3+i)*.1)*H,r=o.r*Math.max(W,H),g=ctx.createRadialGradient(x,y,0,x,y,r);
+      g.addColorStop(0,`rgba(${o.c},.30)`);g.addColorStop(1,`rgba(${o.c},0)`);ctx.fillStyle=g;ctx.fillRect(0,0,W,H);});
+    pts.forEach(p=>{if(!calm){p.y-=p.v/60;if(p.y<-.02)p.y=1.02;}
+      const x=p.x*W+Math.sin(t*.0005+p.a)*18*dpr,y=p.y*H;ctx.beginPath();ctx.arc(x,y,p.s*dpr,0,6.283);
+      ctx.fillStyle=`rgba(226,201,143,${.22+.22*Math.sin(t*.002+p.a)})`;ctx.fill();});
   }
-  h+=`<details class="premium-box" ${canOrder?"":"open"}><summary>Plano Premium · ${WORK.price} por mês</summary><ul><li>${WORK.prem} trabalhos profissionais durante o mês</li><li>Feitos em menos de 24 horas</li><li>Impresso ou em PDF no WhatsApp, à sua escolha</li></ul>`;
-  if(pending) h+=`<p class="work-ok"><b>Comprovativo recebido.</b> A Direcção está a confirmar o pagamento (${esc(pending.protocol)}). O plano será activado assim que for confirmado.</p>`;
-  else h+=`<p><b>1.</b> Pague <b>${WORK.price}</b> por Express para o número <b class="pay-num">${WORK.express}</b>.</p><form id="proofForm"><p><b>2.</b> Envie aqui o comprovativo (foto ou PDF).</p><label>Comprovativo<input type="file" name="proof" accept="image/*,application/pdf" required></label><label>Nota (opcional)<input name="note" maxlength="200" placeholder="Ex.: nome de quem pagou"></label><button class="btn btn-primary" type="submit">Enviar comprovativo</button><p class="form-status" id="proofStatus" aria-live="polite"></p></form>`;
-  h+=`</details>`;
-  if(orders.length) h+=`<h3 class="work-h">Os meus trabalhos</h3>`+orders.map(r=>`<div class="req"><small>${esc(r.protocol)} · ${esc(fmt(r.created_at))}</small><b>${esc(r.theme)}</b> <span class="chip">${esc(r.status)}</span> <span class="chip">${r.plan==="premium"?"Premium":"Grátis"}</span>${r.reply?`<p class="reply"><b>Direcção:</b> ${esc(r.reply)}</p>`:""}</div>`).join("");
-  if(pays.length) h+=`<h3 class="work-h">Os meus pagamentos</h3>`+pays.map(r=>`<div class="req"><small>${esc(r.protocol)} · ${esc(fmt(r.created_at))}</small><b>Plano premium</b> <span class="chip">${esc(r.status)}</span></div>`).join("");
-  box.innerHTML=h;
+  function loop(t){if(run)draw(t);if(!calm)requestAnimationFrame(loop);}
+  size(); addEventListener("resize",size); draw(1000);
+  if(!calm){requestAnimationFrame(loop);
+    document.addEventListener("visibilitychange",()=>{run=!document.hidden;});
+    if("IntersectionObserver" in window) new IntersectionObserver(es=>es.forEach(en=>{run=en.isIntersecting&&!document.hidden;}),{threshold:0}).observe($("#inicio"));}
+})();
+
+/* Destaques e números na página inicial (dados reais) */
+let EVT=[];
+function renderHome(){
+  const st=[["Livros e materiais",LIB.length],["Fotografias",GAL.length],["Comunicados",ANN.length],["Actividades",EVT.length],["Documentos",DOCS.length]].filter(x=>x[1]>0);
+  $("#homeStats").hidden=!st.length;
+  $("#statsGrid").innerHTML=st.map(([l,n])=>`<div class="stat"><b data-n="${n}">${n}</b><span>${esc(l)}</span></div>`).join("");
+  const up=EVT.filter(r=>!r.event_date||new Date(r.event_date)>=Date.now()-864e5).slice(0,3), news=ANN.slice(0,3);
+  $("#homeNews").hidden=!(news.length||up.length);
+  $("#hnNews").innerHTML=news.map(r=>`<a class="hn-card" href="#noticias"><small>${esc(fmt(r.published_at||r.created_at))}</small><strong>${esc(r.title)}</strong><p>${esc(r.summary)}</p></a>`).join("");
+  $("#hnEvents").innerHTML=up.map(r=>{const d=r.event_date?new Date(r.event_date):null;
+    return `<a class="hn-ev" href="#eventos"><div class="hn-date"><b>${d?String(d.getDate()).padStart(2,"0"):"—"}</b><span>${d?esc(d.toLocaleDateString("pt-PT",{month:"short"}).toUpperCase()):""}</span></div><div><strong>${esc(r.title)}</strong><small>${esc(r.location||"")}</small></div></a>`;}).join("");
+  $("#hnEvTitle").hidden=!up.length; $("#hnNewsTitle").hidden=!news.length;
+  if(st.length&&"IntersectionObserver" in window&&!matchMedia("(prefers-reduced-motion: reduce)").matches){
+    $$("#statsGrid b").forEach(b=>b.textContent="0");
+    const io=new IntersectionObserver(es=>es.forEach(en=>{if(!en.isIntersecting)return;io.disconnect();
+      $$("#statsGrid b").forEach(b=>{const n=+b.dataset.n,t0=performance.now();(function f(t){const k=Math.min(1,(t-t0)/1100);b.textContent=Math.round(n*(1-Math.pow(1-k,3)));if(k<1)requestAnimationFrame(f);})(t0);});}),{threshold:.3});
+    io.observe($("#statsGrid"));
+  }
 }
-$("#studentBody").addEventListener("submit",async e=>{
-  const f=e.target; if(f.id!=="workForm"&&f.id!=="proofForm") return;
-  const d=Object.fromEntries(new FormData(f)), prof=ST.profile||{}, btn=f.querySelector("button[type=submit]"); btn.disabled=true;
-  if(f.id==="workForm"){const st=$("#workStatus");st.textContent="A enviar…";
-    const {data,error}=await sb.from("work_orders").insert({student_name:prof.full_name||"",phone:d.phone.trim(),theme:d.theme.trim(),details:(d.details||"").trim(),delivery:d.delivery}).select("protocol,plan").single();
-    btn.disabled=false;
-    if(error){const m=error.message||"";st.textContent=/limite_gratis/.test(m)?"Atingiu o limite de pedidos gratuitos deste mês.":/conta_nao_verificada/.test(m)?"A sua conta ainda não foi verificada.":"Não foi possível enviar. Tente mais tarde.";if(/limite_gratis/.test(m))workTab($("#studentBody"),prof);return;}
-    toast(`Pedido enviado (${data.protocol}). Entrega em ${data.plan==="premium"?"menos de 24":"48"} horas.`);workTab($("#studentBody"),prof);return;}
-  const file=f.proof.files[0],st=$("#proofStatus");
-  if(!file){btn.disabled=false;return;} if(file.size>8*1024*1024){st.textContent="O ficheiro tem mais de 8 MB.";btn.disabled=false;return;}
-  st.textContent="A enviar comprovativo…";
-  const path=`${ST.uid}/${Date.now()}-${file.name.replace(/[^\w.\-]+/g,"_")}`;
-  const up=await sb.storage.from("comprovativos").upload(path,file,{contentType:file.type});
-  if(up.error){st.textContent="Não foi possível enviar o ficheiro.";btn.disabled=false;return;}
-  const {data,error}=await sb.from("premium_payments").insert({student_name:prof.full_name||"",phone:prof.phone||"",note:(d.note||"").trim(),proof_path:path}).select("protocol").single();
-  btn.disabled=false; if(error){st.textContent="Não foi possível registar o pagamento.";return;}
-  toast("Comprovativo enviado. A Direcção vai confirmar.");
-  await workTab($("#studentBody"),prof);
-  $("#studentBody").insertAdjacentHTML("afterbegin",`<p class="work-ok"><a class="btn btn-primary" href="${workWa(`Olá! Paguei o plano premium (${data.protocol}) de ${WORK.price}. Nome: ${prof.full_name||""}. Já enviei o comprovativo no site.`)}" target="_blank" rel="noopener">Avisar a Direcção no WhatsApp</a></p>`);
-});
-document.addEventListener("click",async e=>{const b=e.target.closest("[data-proof]");if(!b)return;
-  const {data,error}=await sb.storage.from("comprovativos").createSignedUrl(b.dataset.proof,300);
-  if(error)toast("Não foi possível abrir o comprovativo.");else window.open(data.signedUrl,"_blank","noopener");});
+
+/* Navegação tipo app: barra inferior e gesto de fechar */
+function setTab(room){$$(".tabbar a").forEach(a=>{const k=a.getAttribute("href").slice(1);a.classList.toggle("on",room?k===room:k==="inicio");});}
+$("#tabMore").addEventListener("click",()=>$("#menuToggle").click());
+(function swipe(){
+  const rv=$("#roomView"),sh=$(".rv-sheet");let y0=null,dy=0;
+  rv.addEventListener("touchstart",e=>{y0=(rv.scrollTop<=0&&e.touches.length===1)?e.touches[0].clientY:null;dy=0;},{passive:true});
+  rv.addEventListener("touchmove",e=>{if(y0===null)return;dy=e.touches[0].clientY-y0;if(dy>0){sh.style.transition="none";sh.style.transform=`translateY(${dy*.9}px)`;}else dy=0;},{passive:true});
+  rv.addEventListener("touchend",()=>{if(y0===null)return;sh.style.transition="transform .3s cubic-bezier(.2,.9,.25,1)";const close=dy>120;sh.style.transform="";y0=null;if(close)closeRoom();});
+})();
