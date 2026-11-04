@@ -240,6 +240,32 @@ $("#askForm").addEventListener("submit",e=>{e.preventDefault();const res=assistS
   out.innerHTML=res.length?res.map(x=>x.k==="faq"?`<div class="req"><b>${esc(x.r.question)}</b><p>${esc(x.r.answer)}</p></div>`:x.k==="ann"?`<div class="req"><b>${esc(x.r.title)}</b><p>${esc(x.r.summary)}</p><a href="#noticias">Ver em Notícias</a></div>`:`<div class="req"><b>${esc(x.r.title)}</b><p>${esc(x.k==="lib"?"Biblioteca":"Documento")}</p><a href="${esc(safeUrl(x.r.file_url||x.r.public_url))}" target="_blank" rel="noopener">Abrir</a></div>`).join(""):`<p class="muted">Não encontrei nada sobre isso. <button type="button" class="link-btn" data-ask>Envie a sua dúvida à Direcção</button></p>`;
   $$("[data-ask]",out).forEach(b=>b.addEventListener("click",()=>openModal("#suggestionModal")));});
 
+/* Capas ao vivo: 1.ª página do PDF, sem ninguém ter de fazer nada */
+const liveQ=[]; let liveBusy=0, autoDone=false;
+const liveIO=("IntersectionObserver" in window)?new IntersectionObserver(es=>es.forEach(en=>{if(en.isIntersecting){liveIO.unobserve(en.target);liveQ.push(en.target);liveNext();}}),{rootMargin:"250px"}):null;
+function queueCovers(root){
+  if(!liveIO||(navigator.connection&&navigator.connection.saveData)) return;
+  $$(".cover-ph[data-pdf]",root).forEach(el=>liveIO.observe(el));
+}
+function liveNext(){
+  while(liveBusy<2&&liveQ.length){const el=liveQ.shift();liveBusy++;liveCover(el).finally(()=>{liveBusy--;liveNext();});}
+}
+async function liveCover(el){
+  const url=el.dataset.pdf; if(!url||!el.isConnected) return;
+  try{
+    const key=location.origin+"/__cover/"+encodeURIComponent(url); let blob=null;
+    try{const c=await caches.open("ae-covers");const hit=await c.match(key);if(hit)blob=await hit.blob();}catch(e){}
+    if(!blob){blob=await pdfCover(url,360);try{const c=await caches.open("ae-covers");await c.put(key,new Response(blob));}catch(e){}}
+    const img=new Image(); img.alt="Capa"; img.onload=()=>{if(el.isConnected)el.replaceWith(img);}; img.src=URL.createObjectURL(blob);
+  }catch(e){/* fica o quadrado simples */}
+}
+async function autoCovers(){
+  if(autoDone||!sb) return;
+  const {data:{session}}=await sb.auth.getSession(); if(!session) return;
+  const {data:role}=await sb.from("staff_roles").select("role").eq("user_id",session.user.id).maybeSingle(); if(!role) return;
+  autoDone=true;
+  for(const tb of ["library_resources","documents"]) await genCovers(tb,true);
+}
 /* Galeria por actividades */
 let GAL=[],galAlbum=null;
 function renderGallery(){
@@ -287,7 +313,7 @@ const LIB_COL={"Livros":"#10264b","Manuais escolares":"#1f6b3a","Fichas e exerc�
 function coverHtml(r){
   if(r.cover_url) return `<img src="${esc(safeUrl(r.cover_url))}" alt="Capa de ${esc(r.title)}" loading="lazy">`;
   const u=r.file_url||r.public_url||"", m=u.match(/\.([a-z0-9]{2,4})(\?|$)/i);
-  return `<div class="cover-ph plain"><b>${esc((m?m[1]:"link").toUpperCase())}</b></div>`;
+  return `<div class="cover-ph plain"${isPdfUrl(u)?` data-pdf="${esc(u)}"`:""}><b>${esc((m?m[1]:"link").toUpperCase())}</b></div>`;
 }
 const itemCard=(r,cat,url,meta)=>`<a class="lib-card" href="${esc(safeUrl(url))}" target="_blank" rel="noopener"><div class="cover">${coverHtml(r,cat)}</div><strong>${esc(r.title)}</strong><small>${esc(meta)}</small></a>`;
 $("#libList").className="lib-grid"; $("#documentList").className="lib-grid";
@@ -298,6 +324,7 @@ function renderLib(){
   $("#libCount").textContent=`${list.length} de ${LIB.length} recursos`;
   $("#libList").innerHTML=list.length?list.slice(0,libShown).map(r=>itemCard(r,r.category,r.file_url,[r.category,r.subject,r.grade,r.author].filter(Boolean).join(" · "))).join(""):`<p class="muted">Nenhum recurso encontrado.</p>`;
   $("#libMore").hidden=list.length<=libShown;
+  queueCovers($("#libList"));
 }
 $("#libSearch").addEventListener("input",()=>{libShown=12;renderLib();});
 $("#libCat").addEventListener("change",()=>{libShown=12;renderLib();});
@@ -317,7 +344,7 @@ async function loadPublic(){
     sb.from("honor_roll").select("*").eq("published",true).eq("consent",true).order("sort_order",{ascending:true}).order("created_at",{ascending:true}),
     sb.from("faq_items").select("*").eq("published",true).order("sort_order",{ascending:true}).order("created_at",{ascending:true})]);
   LIB=l.data||[]; renderLib();
-  FAQ=f.data||[]; renderHonor(h.data||[]); renderFaq(f.data||[]); renderHome();
+  FAQ=f.data||[]; renderHonor(h.data||[]); renderFaq(f.data||[]); renderHome(); autoCovers();
   if(m.data?.length){
     const execHtml=m.data.map(r=>`<article class="team-card">${r.photo_url?`<img src="${esc(safeUrl(r.photo_url))}" alt="${esc(r.full_name)}" loading="lazy">`:`<div class="team-ph" aria-hidden="true">${esc(r.full_name.trim().split(/\s+/).map(w=>w[0]).slice(0,2).join("").toUpperCase())}</div>`}<h3>${esc(r.full_name)}</h3><p class="role">${esc(r.role)}</p>${r.bio?`<details class="bio-more"><summary><span class="s-open">Ver biografia</span><span class="s-close">Ocultar biografia</span></summary><p>${esc(r.bio)}</p></details>`:""}</article>`).join("");
     $("#teamGrid").innerHTML=execHtml; $("#execGrid").innerHTML=execHtml;
@@ -334,7 +361,7 @@ async function loadPublic(){
       return `<article class="event-card"><div class="event-date"><b>${dt?String(dt.getDate()).padStart(2,"0"):"—"}</b><span>${dt?dt.toLocaleDateString("pt-PT",{month:"short"}).toUpperCase():"DATA"}</span></div><div><span class="tag">${esc(r.location||"EVENTO")}</span><h3>${esc(r.title)}</h3><p>${esc(r.details)}</p>${r.image_url?`<img class="event-img" src="${esc(safeUrl(r.image_url))}" alt="" loading="lazy">`:""}</div></article>`;}).join("");
   }
   if(d.data?.length){
-    $("#documentList").innerHTML=d.data.map(r=>itemCard(r,"Documento",r.public_url,r.description||"Documento")).join("");
+    $("#documentList").innerHTML=d.data.map(r=>itemCard(r,"Documento",r.public_url,r.description||"Documento")).join(""); queueCovers($("#documentList"));
   }
 }
 loadPublic();
@@ -467,11 +494,11 @@ function loadPdfJs(){
 }
 const withTimeout=(p,ms)=>Promise.race([p,new Promise((_,no)=>setTimeout(()=>no(new Error("tempo esgotado")),ms))]);
 const isPdfUrl=u=>/\.pdf(\?|$)/i.test(u||"");
-async function pdfCover(src){
+async function pdfCover(src,w=560){
   await loadPdfJs();
   return withTimeout((async()=>{
     const pdf=await pdfjsLib.getDocument(src instanceof Blob?{data:new Uint8Array(await src.arrayBuffer())}:{url:src,disableAutoFetch:true}).promise;
-    const page=await pdf.getPage(1), v0=page.getViewport({scale:1}), vp=page.getViewport({scale:560/v0.width});
+    const page=await pdf.getPage(1), v0=page.getViewport({scale:1}), vp=page.getViewport({scale:w/v0.width});
     const c=document.createElement("canvas"); c.width=Math.round(vp.width); c.height=Math.round(vp.height);
     const x=c.getContext("2d"); x.fillStyle="#fff"; x.fillRect(0,0,c.width,c.height);
     await page.render({canvasContext:x,canvas:c,viewport:vp}).promise;
@@ -491,22 +518,23 @@ async function insertWithCover(tb,obj,cover){
   if(r.error&&cover) r=await sb.from(tb).insert(obj);
   return r;
 }
-async function genCovers(){
-  const tb=currentTab, L=$("#coverLog"); L.hidden=false; L.textContent="";
-  const log=m=>{L.textContent+=m+"\n";L.scrollTop=L.scrollHeight;};
+async function genCovers(tbArg,silent){
+  const tb=tbArg||currentTab, L=silent?null:$("#coverLog"); if(L){L.hidden=false;L.textContent="";}
+  const say=(m,ms)=>{if(!silent)toast(m,ms);};
+  const log=m=>{if(!L)return;L.textContent+=m+"\n";L.scrollTop=L.scrollHeight;};
   log("A procurar os PDF sem capa…");
   const {data,error}=await sb.from(tb).select("*").limit(1000);
-  if(error){log("ERRO ao ler a tabela: "+error.message);toast("Erro ao ler os dados. Veja o registo abaixo do botão.",8000);return;}
-  if(data.length&&!("cover_url" in data[0])){log("ERRO: a coluna cover_url não existe. Corra o SQL das capas no Supabase.");toast("Falta o SQL das capas. Veja o registo.",8000);return;}
+  if(error){log("ERRO ao ler a tabela: "+error.message);say("Erro ao ler os dados. Veja o registo abaixo do botão.",8000);return;}
+  if(data.length&&!("cover_url" in data[0])){log("ERRO: a coluna cover_url não existe. Corra o SQL das capas no Supabase.");say("Falta o SQL das capas. Veja o registo.",8000);return;}
   const urlOf=r=>tb==="documents"?r.public_url:r.file_url, isTxt=r=>String(r.cover_url||"").includes("/covers/txt-");
   for(const r of data.filter(r=>isTxt(r)&&!isPdfUrl(urlOf(r)))){await sb.from(tb).update({cover_url:null}).eq("id",r.id);}
   const todo=data.filter(r=>isPdfUrl(urlOf(r))&&(!r.cover_url||isTxt(r))), semPdf=data.filter(r=>!isPdfUrl(urlOf(r))).length;
-  if(!todo.length){log("Todos os PDF já têm a capa da 1.ª página."+(semPdf?` (${semPdf} ficheiros que não são PDF ficam sem capa.)`:""));toast("Todos os PDF já têm capa.");return;}
+  if(!todo.length){log("Todos os PDF já têm a capa da 1.ª página."+(semPdf?` (${semPdf} ficheiros que não são PDF ficam sem capa.)`:""));say("Todos os PDF já têm capa.");return;}
   log(todo.length+" PDF para tratar.");
-  try{await loadPdfJs();log("Leitor de PDF carregado.");}catch(e){log("ERRO: não foi possível carregar o leitor de PDF (sem internet ou bloqueado). Tente com outra rede.");toast("Leitor de PDF indisponível. Veja o registo.",8000);return;}
+  try{await loadPdfJs();log("Leitor de PDF carregado.");}catch(e){log("ERRO: não foi possível carregar o leitor de PDF (sem internet ou bloqueado). Tente com outra rede.");say("Leitor de PDF indisponível. Veja o registo.",8000);return;}
   let ok=0,fail=0;
   for(let i=0;i<todo.length;i++){
-    const r=todo[i], nm=(r.title||"").slice(0,40); toast(`A criar capa ${i+1} de ${todo.length}…`,60000);
+    const r=todo[i], nm=(r.title||"").slice(0,40); say(`A criar capa ${i+1} de ${todo.length}…`,60000);
     try{
       const f=await pdfCover(urlOf(r));
       const cu=await uploadFile("event-images",f,"covers/pdf-");
@@ -517,8 +545,8 @@ async function genCovers(){
     }catch(e){fail++;log("✘ "+nm+": "+String((e&&e.message)||e).slice(0,90));}
   }
   log(`Fim: ${ok} capas da 1.ª página, ${fail} com erro.`+(semPdf?` ${semPdf} ficheiros que não são PDF ficam sem capa.`:""));
-  toast(`Capas: ${ok} criadas${fail?", "+fail+" com erro":""}.`,10000);
-  loadPublic();
+  if(silent){if(ok){toast(`${ok} capas criadas automaticamente.`,5000);loadPublic();}}
+  else{toast(`Capas: ${ok} criadas${fail?", "+fail+" com erro":""}.`,10000);loadPublic();}
 }
 $("#adminBody").addEventListener("click",async e=>{
   if(e.target.closest("[data-covers]")){await genCovers();return;}
