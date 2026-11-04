@@ -338,3 +338,5 @@ body.solid .topbar::before{background:rgba(16,42,67,.84);-webkit-backdrop-filter
 }
 @media(max-width:760px){.topbar nav{top:73px!important}}
 @media(max-width:1240px){.topbar nav{background:#0a1a2d!important}}
+.cover-log{background:#0a1a2d;color:#cfe3ff;font:12px/1.5 monospace;padding:12px;border-radius:10px;max-height:240px;overflow:auto;white-space:pre-wrap}
+.cover-ph.plain{background:#eef1f5;align-items:center;justify-content:center}.cover-ph.plain b{font:800 1.1rem "DM Sans",sans-serif;letter-spacing:.14em;color:#6b7a8d}
