@@ -323,3 +323,18 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--blue)!im
 .btn-wa{display:inline-block;background:#1c9c58;color:#fff;text-decoration:none;font:700 .85rem "DM Sans",sans-serif;padding:12px 18px;border-radius:999px}
 .chip.alt{background:var(--gold);color:#102A43}
 .work-form{margin-bottom:12px}
+
+/* ===== correcções v5: menu móvel, cabeçalho, ícones ===== */
+.topbar{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+.topbar::before{content:"";position:absolute;inset:0;z-index:-1;background:transparent;transition:background .3s,backdrop-filter .3s}
+body.solid .topbar{background:transparent!important}
+body.solid .topbar::before{background:rgba(16,42,67,.84);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
+.tabbar i{display:grid;place-items:center}
+.tabbar svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+@media(max-width:1240px){
+  .topbar nav{position:fixed!important;left:0;right:0;bottom:0;top:84px!important;overflow-y:auto;overscroll-behavior:contain;padding:12px 6% 130px!important}
+  .nav-sub,.nav-sub:hover{background:transparent!important;box-shadow:none!important;border:0!important}
+  .nav-sub a{background:transparent!important;color:#fff!important}
+}
+@media(max-width:760px){.topbar nav{top:73px!important}}
+@media(max-width:1240px){.topbar nav{background:#0a1a2d!important}}

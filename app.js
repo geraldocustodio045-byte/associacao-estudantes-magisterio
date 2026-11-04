@@ -114,7 +114,7 @@ function setAuthTab(t){$$("[data-auth]").forEach(b=>b.classList.toggle("active",
 $$("[data-auth]").forEach(b=>b.addEventListener("click",()=>setAuthTab(b.dataset.auth)));
 $("#loginForm").addEventListener("submit",async e=>{e.preventDefault();if(!sb)return;const f=e.currentTarget,d=Object.fromEntries(new FormData(f)),st=$("#loginStatus");
   st.textContent="A entrar…";const {error}=await sb.auth.signInWithPassword({email:d.email.trim(),password:d.password});f.password.value="";
-  st.textContent=error?"E-mail ou palavra-passe incorrectos.":"";if(!error)refreshAccount();});
+  st.textContent=error?loginMsg(error):"";if(!error)refreshAccount();});
 $("#registerForm").addEventListener("submit",async e=>{e.preventDefault();if(!sb)return;const f=e.currentTarget,d=Object.fromEntries(new FormData(f)),st=$("#registerStatus");
   if(d.website)return;
   if(!d.full_name.trim()||!d.course||!d.grade.trim()){st.textContent="Preencha o nome, o curso e a classe.";return;}
@@ -129,6 +129,12 @@ $("#registerForm").addEventListener("submit",async e=>{e.preventDefault();if(!sb
   f.reset();
   if(data.session){await sb.from("profiles").upsert({id:data.user.id,...meta});st.textContent="";refreshAccount();}
   else st.textContent="Conta criada. A Direcção vai analisar o seu pedido e a conta fica activa depois de aprovada.";});
+function loginMsg(e){const m=(e&&e.message)||"";
+  if(/invalid login/i.test(m))return "E-mail ou palavra-passe incorrectos.";
+  if(/not confirmed/i.test(m))return "E-mail ainda por confirmar.";
+  if(/rate|too many/i.test(m))return "Demasiadas tentativas. Aguarde um pouco e tente de novo.";
+  if(/fetch|network/i.test(m))return "Sem ligação à internet. Tente de novo.";
+  return "Não foi possível entrar: "+m;}
 const resetUrl=()=>location.origin+location.pathname;
 async function sendReset(email,st){
   st.textContent="A enviar…";
@@ -404,7 +410,7 @@ $("#adminLogin").addEventListener("submit",async e=>{
   $("#adminStatus").textContent="A entrar…";
   const {error}=await sb.auth.signInWithPassword({email:d.email.trim(),password:d.password});
   e.currentTarget.password.value="";
-  if(error){$("#adminStatus").textContent="E-mail ou palavra-passe incorrectos.";return;}
+  if(error){$("#adminStatus").textContent=loginMsg(error);return;}
   $("#adminStatus").textContent=""; checkStaff();
 });
 $("#adminLogout").addEventListener("click",async()=>{await sb.auth.signOut();checkStaff();});
@@ -418,7 +424,7 @@ async function loadTab(name){
   if(t.enrich&&data)await t.enrich(data);
   let html=`<p><button type="button" class="btn-sm" data-export>Exportar tudo em CSV (cópia de segurança)</button></p>`;
   if(t.search)html+=`<p><input id="adminFind" class="admin-find" placeholder="Pesquisar por nome, curso ou turma…" aria-label="Pesquisar"></p><p class="muted">${(data||[]).filter(r=>!r.verified&&!r.suspended).length} por aprovar</p>`;
-  if(name==="library_resources"||name==="documents")html+=`<p><button type="button" class="btn-sm" data-covers>Gerar capas em falta</button></p>`;
+  if(name==="library_resources"||name==="documents"){const nc=(data||[]).filter(r=>{const u=name==="documents"?r.public_url:r.file_url;return !r.cover_url||(String(r.cover_url).includes("/covers/txt-")&&isPdfUrl(u));}).length;html+=`<p><button type="button" class="btn-sm" data-covers>Gerar capas em falta${nc?" ("+nc+")":""}</button></p>`;}
   if(t.form) html+=`<form class="admin-form" data-add="${name}">${t.form.map(([k,l,ty,opts])=>ty==="select"?`<label>${l}<select name="${k}">${opts.map(o=>`<option>${esc(o)}</option>`).join("")}</select></label>`:ty==="textarea"?`<label>${l}<textarea name="${k}" rows="3" ${k==="bio"||/opcional/.test(l)?"":"required"}></textarea></label>`:`<label>${l}<input name="${k}" type="${ty||"text"}"${k==="album"?' list="albumList" maxlength="120"':""}${ty==="number"?' step="any"':""} ${(k==="title"&&name!=="library_resources")||k==="full_name"||k==="role"||k==="question"?"required":""}${ty==="file"&&(name==="gallery_images"||name==="library_resources")?" multiple":""}${ty==="file"?' accept="'+(name==="documents"||name==="library_resources"?".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx":"image/*")+'"':""}></label>`).join("")}<button class="btn btn-primary" type="submit">Adicionar (fica oculto até publicar)</button>${name==="gallery_images"?`<datalist id="albumList">${[...new Set((data||[]).map(r=>r.album).filter(Boolean))].map(a=>`<option value="${esc(a)}">`).join("")}</datalist>`:""}</form>`;
   if(error) html+=`<p class="form-status">Erro ao carregar dados.</p>`;
   else if(!data.length) html+=`<p class="muted">Sem registos.</p>`;
@@ -458,14 +464,19 @@ function loadPdfJs(){
     sc.onload=()=>{pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";ok();};sc.onerror=no;document.head.appendChild(sc);});
   return pdfjsP;
 }
+const withTimeout=(p,ms)=>Promise.race([p,new Promise((_,no)=>setTimeout(()=>no(new Error("tempo esgotado")),ms))]);
+const isPdfUrl=u=>/\.pdf(\?|$)/i.test(u||"");
 async function pdfCover(src){
   await loadPdfJs();
-  const pdf=await pdfjsLib.getDocument(src instanceof Blob?{data:new Uint8Array(await src.arrayBuffer())}:{url:src}).promise;
-  const page=await pdf.getPage(1), v0=page.getViewport({scale:1}), vp=page.getViewport({scale:420/v0.width});
-  const c=document.createElement("canvas"); c.width=Math.round(vp.width); c.height=Math.round(vp.height);
-  await page.render({canvasContext:c.getContext("2d"),viewport:vp}).promise;
-  const b=await new Promise(r=>c.toBlob(r,"image/jpeg",.82)); if(!b) throw new Error("sem capa");
-  return new File([b],"capa.jpg",{type:"image/jpeg"});
+  return withTimeout((async()=>{
+    const pdf=await pdfjsLib.getDocument(src instanceof Blob?{data:new Uint8Array(await src.arrayBuffer())}:{url:src,disableAutoFetch:true}).promise;
+    const page=await pdf.getPage(1), v0=page.getViewport({scale:1}), vp=page.getViewport({scale:480/v0.width});
+    const c=document.createElement("canvas"); c.width=Math.round(vp.width); c.height=Math.round(vp.height);
+    const x=c.getContext("2d"); x.fillStyle="#fff"; x.fillRect(0,0,c.width,c.height);
+    await page.render({canvasContext:x,canvas:c,viewport:vp}).promise;
+    const b=await new Promise(r=>c.toBlob(r,"image/jpeg",.85)); if(!b) throw new Error("sem imagem");
+    return new File([b],"capa.jpg",{type:"image/jpeg"});
+  })(),45000);
 }
 async function textCover(title,cat){
   const c=document.createElement("canvas"); c.width=420; c.height=560; const x=c.getContext("2d"), col=LIB_COL[cat]||"#10264b";
@@ -480,31 +491,40 @@ async function textCover(title,cat){
   const b=await new Promise(r=>c.toBlob(r,"image/jpeg",.85)); return new File([b],"capa.jpg",{type:"image/jpeg"});
 }
 async function makeCover(file,title,cat){
-  if(file&&(file.type==="application/pdf"||/\.pdf$/i.test(file.name))){try{return await pdfCover(file);}catch(e){}}
-  return textCover(title,cat);
+  if(file&&(file.type==="application/pdf"||/\.pdf$/i.test(file.name))){
+    try{return {file:await pdfCover(file),kind:"pdf"};}catch(e){console.warn("capa do PDF falhou",e);}
+  }
+  return {file:await textCover(title,cat),kind:"txt"};
 }
-async function coverUrl(file,title,cat){try{return await uploadFile("event-images",await makeCover(file,title,cat),"covers/");}catch(e){return null;}}
+async function coverUrl(file,title,cat){
+  try{const c=await makeCover(file,title,cat);return await uploadFile("event-images",c.file,"covers/"+c.kind+"-");}catch(e){return null;}
+}
 async function insertWithCover(tb,obj,cover){
   let r=await sb.from(tb).insert(cover?{...obj,cover_url:cover}:obj);
   if(r.error&&cover) r=await sb.from(tb).insert(obj);
   return r;
 }
 async function genCovers(){
-  const tb=currentTab, {data,error}=await sb.from(tb).select("*").is("cover_url",null).limit(500);
+  const tb=currentTab, {data,error}=await sb.from(tb).select("*").or("cover_url.is.null,cover_url.like.*/covers/txt-*").limit(500);
   if(error){toast("Corra primeiro o SQL das capas no Supabase.");return;}
-  if(!data.length){toast("Todas as capas já existem.");return;}
-  let ok=0;
-  for(let i=0;i<data.length;i++){
-    const r=data[i]; toast(`A criar capa ${i+1} de ${data.length}…`);
-    const url=tb==="documents"?r.public_url:r.file_url, cat=tb==="documents"?"Documento":r.category;
+  const urlOf=r=>tb==="documents"?r.public_url:r.file_url;
+  const todo=data.filter(r=>!r.cover_url||isPdfUrl(urlOf(r)));
+  if(!todo.length){toast("Todas as capas já estão prontas.");return;}
+  let pdf=0,txt=0,fail=0,why="";
+  for(let i=0;i<todo.length;i++){
+    const r=todo[i]; toast(`A criar capa ${i+1} de ${todo.length}…`,60000);
+    const url=urlOf(r), cat=tb==="documents"?"Documento":r.category;
     try{
-      let f=null; if(/\.pdf(\?|$)/i.test(url)){try{f=await pdfCover(url);}catch(e){}}
-      if(!f) f=await textCover(r.title,cat);
-      const cu=await uploadFile("event-images",f,"covers/"); if(!cu) continue;
-      const {error:er}=await sb.from(tb).update({cover_url:cu}).eq("id",r.id); if(!er) ok++;
-    }catch(e){}
+      let f=null,kind="txt";
+      if(isPdfUrl(url)){try{f=await pdfCover(url);kind="pdf";}catch(e){why=why||String((e&&e.message)||e).slice(0,50);}}
+      if(!f){if(r.cover_url){fail++;continue;} f=await textCover(r.title,cat);}
+      const cu=await uploadFile("event-images",f,"covers/"+kind+"-"); if(!cu){fail++;continue;}
+      const {error:er}=await sb.from(tb).update({cover_url:cu}).eq("id",r.id);
+      if(er){fail++;continue;} if(kind==="pdf")pdf++;else txt++;
+    }catch(e){fail++;}
   }
-  toast(`${ok} capas criadas.`); loadTab(currentTab); loadPublic();
+  toast(`Capas: ${pdf} da 1.ª página, ${txt} desenhadas${fail?", "+fail+" sem sucesso":""}${why?" ("+why+")":""}.`,10000);
+  loadTab(currentTab); loadPublic();
 }
 $("#adminBody").addEventListener("click",async e=>{
   if(e.target.closest("[data-covers]")){await genCovers();return;}
