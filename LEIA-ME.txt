@@ -1,0 +1,68 @@
+IMPLEMENTAÇÃO DO CHATBOT IA — ASSOCIAÇÃO DOS ESTUDANTES
+
+O QUE ESTÁ INCLUÍDO
+1. app.js — ficheiro completo do portal com a correcção anterior da galeria e o novo chatbot flutuante.
+2. supabase/functions/ai-chat/index.ts — função segura que comunica com o Gemini.
+3. supabase/migrations/202611080001_ai_chat_limits.sql — tabela privada para limitar abusos (8 pedidos por minuto por IP, guardado apenas como hash).
+4. supabase/config.toml — configuração para permitir visitantes sem login chamarem a função.
+
+ANTES DE COMEÇAR
+- Faça uma cópia de segurança do app.js actualmente publicado.
+- O pacote foi preparado a partir do app.js corrigido anteriormente. Não substitua o seu HTML, CSS, ficheiros de configuração ou outras pastas.
+- A implementação pressupõe que o portal continua a usar a configuração window.AE_CONFIG com SUPABASE_URL e SUPABASE_ANON_KEY, tal como no app.js fornecido.
+
+PASSO 1 — CHAVE GEMINI
+1. Abra https://aistudio.google.com/ e entre na sua conta Google.
+2. Crie uma API key para a Gemini API.
+3. Não coloque essa chave em app.js, HTML, GitHub público ou no navegador.
+
+PASSO 2 — BASE DE DADOS
+1. Abra o painel do seu projecto Supabase.
+2. Entre em SQL Editor.
+3. Copie e execute o conteúdo de:
+   supabase/migrations/202611080001_ai_chat_limits.sql
+
+PASSO 3 — FUNÇÃO SUPABASE
+1. No seu repositório, crie a pasta:
+   supabase/functions/ai-chat/
+2. Coloque nela o ficheiro index.ts deste pacote.
+3. Se já existir supabase/config.toml, NÃO o substitua inteiro. Acrescente apenas:
+
+   [functions.ai-chat]
+   verify_jwt = false
+
+   Se a secção já existir, actualize-a em vez de duplicar.
+4. No Supabase, abra Edge Functions / Secrets (ou Project Settings / Edge Functions / Secrets, conforme a interface).
+5. Adicione estes segredos:
+   GEMINI_API_KEY = a chave criada no Google AI Studio
+   AI_RATE_LIMIT_SALT = uma frase aleatória longa, exclusiva e secreta (pelo menos 32 caracteres)
+   As chaves públicas e secretas do próprio Supabase são lidas das variáveis disponibilizadas pelo Supabase; não tente criar manualmente segredos com prefixo SUPABASE_.
+6. Publique/deploy a função com o nome exacto: ai-chat.
+
+IMPORTANTE SOBRE AS CHAVES
+- GEMINI_API_KEY e a chave service role/secret do Supabase são segredos de servidor. Nunca os coloque no app.js nem num repositório público.
+- A chave anon/publishable do Supabase é pública por desenho, mas a função compara-a com a chave disponibilizada pelo próprio Supabase.
+- Nunca partilhe a service_role key em mensagens ou capturas de ecrã. Não tente criar manualmente segredos com prefixo SUPABASE_, pois esse prefixo é reservado pelo Supabase.
+
+PASSO 4 — PUBLICAR O APP.JS
+1. Faça backup do app.js actual.
+2. Substitua o app.js do site pelo app.js incluído neste pacote, mantendo exactamente o nome app.js.
+3. Não altere os outros ficheiros do site.
+4. Publique/commit as alterações no GitHub como normalmente faz.
+
+PASSO 5 — TESTAR
+- Abra o site numa janela anónima, sem iniciar sessão.
+- Deve aparecer o botão “Falar com a IA” no canto inferior direito.
+- Teste uma pergunta geral, por exemplo: “Explica a diferença entre hardware e software”.
+- Teste também uma pergunta sobre uma informação interna não publicada: o chatbot deve admitir que não tem confirmação, em vez de inventar.
+- No Supabase, consulte os logs da Edge Function ai-chat se houver erro.
+
+LIMITES E TRANSPARÊNCIA
+- O modelo configurado é gemini-2.5-flash-lite. O Google disponibiliza uma modalidade gratuita sujeita a limites de utilização, que podem mudar. Não é ilimitada nem garante disponibilidade contínua.
+- Esta versão responde com conhecimento geral do modelo. Não faz pesquisa web em tempo real e não lê automaticamente a base de dados, os documentos ou os comunicados do portal.
+- O histórico da conversa fica apenas na memória da página e desaparece quando a página é recarregada.
+- O limite implementado é de 8 pedidos por minuto por IP (hash), além de limites de tamanho e frequência no navegador. Para um site público, monitorize o consumo e os logs.
+- Na modalidade gratuita, consulte as condições de privacidade e utilização de dados do Google antes de usar com informação sensível. Não envie palavras-passe, documentos pessoais ou dados privados dos estudantes.
+
+ESTADO DESTA ENTREGA
+Os ficheiros foram preparados e o JavaScript do portal foi validado sintacticamente. A integração ainda NÃO está activa no site publicado: é necessário executar os passos de configuração e deployment acima. Não foram alterados o banco de dados existente nem as publicações dos estudantes, além da criação da tabela isolada de limite do chatbot.

@@ -1,0 +1,4 @@
+[functions.ai-chat]
+# Endpoint público para visitantes sem conta. A função valida a chave pública
+# do portal e aplica limite de utilização por IP com hash.
+verify_jwt = false
